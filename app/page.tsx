@@ -318,6 +318,7 @@ export default function Home() {
 
   const toggleMode=async(m:"perso"|"pro")=>{
     setAppMode(m);
+    if(m==="pro"){setYear(2026);setMonth(0);}
     await supabase.from("user_preferences").upsert({user_id:userId,mode:m},{onConflict:"user_id"});
   };
 
@@ -776,16 +777,18 @@ export default function Home() {
         {/* ══ PRO — Bilan annuel ══ */}
         {appMode==="pro"&&proTab==="pro-annual"&&(
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <SectionHead
-              title={`Bilan ${year}`}
-              sub="Curutchet Consulting — récapitulatif annuel"
-              action={
-                <div style={{fontSize:12,color:text3,textAlign:"right"}}>
-                  Solde initial<br/>
-                  <strong style={{color:ocean,fontSize:14}}>{proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"—"}</strong>
+            <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — récapitulatif annuel"/>
+            <div style={{...card,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
+                <div style={{fontSize:22,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
+                  {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
                 </div>
-              }
-            />
+              </div>
+              <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
+                {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
+              </button>
+            </div>
             <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:980}}>
                 <thead>
