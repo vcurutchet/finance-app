@@ -1,20 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #0a0f1a;
-  --bg-secondary: #111927;
-  --bg-card: rgba(255,255,255,0.03);
-  --border: rgba(255,255,255,0.08);
-  --text-primary: #e8edf5;
-  --text-secondary: #8899aa;
-  --text-muted: #5a6a80;
-  --text-label: #6b7d94;
-  --blue: #3b82f6;
-  --blue-dark: #2563eb;
-  --red: #ef4444;
-  --green: #10b981;
-  --amber: #f59e0b;
+  --ocean:       #4a8fb4;
+  --ocean-dark:  #3a7a9b;
+  --ocean-light: #7ab8d2;
+  --seafoam:     #5aaa90;
+  --coral:       #c96b52;
+  --sand:        #c4905a;
+  --sand-light:  #f0e4d0;
+  --bg:          #f0ebe2;
+  --surface:     #ffffff;
+  --surface-alt: #faf7f2;
+  --border:      #e4ddd4;
+  --border-soft: #ede8e1;
+  --text:        #2c3a48;
+  --text-2:      #7a8fa2;
+  --text-3:      #a8bac8;
+  --text-label:  #8fa5b8;
 }
 
 * {
@@ -24,8 +27,8 @@
 body {
   margin: 0;
   font-family: 'DM Sans', sans-serif;
-  background: linear-gradient(160deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0d1520 100%);
-  color: var(--text-primary);
+  background: linear-gradient(160deg, #eaf2f7 0%, #f0ebe2 45%, #f5f0e8 100%);
+  color: var(--text);
   min-height: 100vh;
 }
 
@@ -34,6 +37,7 @@ input, select, button {
 }
 
 input:focus, select:focus {
-  border-color: var(--blue) !important;
+  border-color: var(--ocean) !important;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(74,143,180,0.12);
 }
