@@ -1,34 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
 @import "tailwindcss";
-
-:root {
-  --ocean:       #4a8fb4;
-  --ocean-dark:  #3a7a9b;
-  --ocean-light: #7ab8d2;
-  --seafoam:     #5aaa90;
-  --coral:       #c96b52;
-  --sand:        #c4905a;
-  --sand-light:  #f0e4d0;
-  --bg:          #f0ebe2;
-  --surface:     #ffffff;
-  --surface-alt: #faf7f2;
-  --border:      #e4ddd4;
-  --border-soft: #ede8e1;
-  --text:        #2c3a48;
-  --text-2:      #7a8fa2;
-  --text-3:      #a8bac8;
-  --text-label:  #8fa5b8;
-}
 
 * {
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
   font-family: 'DM Sans', sans-serif;
-  background: linear-gradient(160deg, #eaf2f7 0%, #f0ebe2 45%, #f5f0e8 100%);
-  color: var(--text);
+  background: #F7F5F0;
+  color: #2D3436;
   min-height: 100vh;
 }
 
@@ -37,7 +20,17 @@ input, select, button {
 }
 
 input:focus, select:focus {
-  border-color: var(--ocean) !important;
+  border-color: #1B4D6E !important;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(74,143,180,0.12);
+  box-shadow: 0 0 0 3px rgba(27, 77, 110, 0.10);
+}
+
+/* Hover states for list rows — can't be done inline */
+.row:hover {
+  background: #FAFAF7 !important;
+}
+
+/* Hide scrollbar on tab nav */
+.tab-scroll::-webkit-scrollbar {
+  display: none;
 }
