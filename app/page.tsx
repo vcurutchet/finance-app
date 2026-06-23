@@ -147,11 +147,12 @@ function SavingForm({initial,onSubmit,onClose,title}: any) {
 }
 
 // ─── Pro Forms ───
-function EntryForm({initial,onSubmit,onClose,title}: any) {
-  const [type,setType]=useState(initial?.type||"");
-  const [amount,setAmt]=useState(initial?.amount||"");
-  const [date,setDate]=useState(initial?.date||new Date().toISOString().slice(0,10));
-  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,amount:parseFloat(amount),date})};
+function EntryForm({initial,onSubmit,onClose,title,defaultYear}: any) {
+  const [type,setType]   = useState(initial?.type||"");
+  const [amount,setAmt]  = useState(initial?.amount||"");
+  const [date,setDate]   = useState(initial?.date||new Date().toISOString().slice(0,10));
+  const [exYear,setExYear] = useState(initial?.exercise_year??defaultYear??2026);
+  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,amount:parseFloat(amount),date,exercise_year:Number(exYear)})};
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
@@ -159,8 +160,15 @@ function EntryForm({initial,onSubmit,onClose,title}: any) {
           <input list="entry-type-list" value={type} onChange={e=>setType(e.target.value)} placeholder="ex : CA Janvier 2026" style={inp}/>
           <datalist id="entry-type-list">{ENTRY_SUGGESTIONS.map(t=><option key={t} value={t}/>)}</datalist>
         </Field>
-        <Field label="Montant TTC (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
-        <Field label="Date"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Montant TTC (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
+          <Field label="Exercice comptable">
+            <select value={exYear} onChange={e=>setExYear(e.target.value)} style={sel}>
+              {[2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="Date de réception"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -335,7 +343,8 @@ export default function Home() {
   // Pro monthly computed
   const proC=useMemo(()=>{
     const bycat=(cat: string)=>proExits.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
-    const totalEntrees=proEntries.reduce((s,e)=>s+Number(e.amount),0);
+    const currentEntries=proEntries.filter(e=>!e.exercise_year||e.exercise_year===year);
+    const totalEntrees=currentEntries.reduce((s,e)=>s+Number(e.amount),0);
     const totalSorties=proExits.reduce((s,e)=>s+Number(e.amount),0);
     const tvaCalc=totalEntrees/6;
     const tvaReelle=bycat("TVA");
@@ -356,7 +365,7 @@ export default function Home() {
     let cum=initBal;
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
-      const ents=allEntries.filter(e=>e.month_key===k);
+      const ents=allEntries.filter(e=>e.month_key===k&&(!e.exercise_year||e.exercise_year===year));
       const exts=allExits.filter(e=>e.month_key===k);
       const bycat=(cat: string)=>exts.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
       const caTTC=ents.reduce((s,e)=>s+Number(e.amount),0);
@@ -393,8 +402,8 @@ export default function Home() {
   const delSaving     = async(id: string)=>{await supabase.from("savings").delete().eq("id",id);loadData()};
 
   // ─── Pro CRUD ───
-  const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date});loadProData();setModal(null)};
-  const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
+  const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
+  const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
   const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date});loadProData();setModal(null)};
   const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
@@ -688,21 +697,27 @@ export default function Home() {
                 </div>
                 {proEntries.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucune entrée</p>:
                   <div style={{display:"flex",flexDirection:"column"}}>
-                    {proEntries.map((e,i)=>(
-                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proEntries.length-1?`1px solid #F2EFE9`:"none"}}>
+                    {proEntries.map((e,i)=>{
+                      const offYear=e.exercise_year&&e.exercise_year!==year;
+                      return (
+                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proEntries.length-1?`1px solid #F2EFE9`:"none",opacity:offYear?0.55:1}}>
                         <div>
-                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3}}>{e.type}</div>
+                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6}}>
+                            {e.type}
+                            {offYear&&<span style={{fontSize:10,fontWeight:600,background:"rgba(160,132,92,0.12)",color:amber,borderRadius:4,padding:"1px 6px"}}>Ex. {e.exercise_year}</span>}
+                          </div>
                           <div style={{fontSize:11,color:text3}}>{e.date}</div>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{fontSize:13,fontWeight:600,color:sage,marginRight:4}}>{fmt(e.amount)}</span>
+                          <span style={{fontSize:13,fontWeight:600,color:offYear?text3:sage,marginRight:4}}>{fmt(e.amount)}</span>
                           <button onClick={()=>{setEditItem(e);setModal("editEntry")}} style={sm()}>✏</button>
                           <button onClick={()=>delEntry(e.id)} style={sm(true)}>✕</button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                      <span style={{fontSize:12,color:text3}}>Total</span>
+                      <span style={{fontSize:12,color:text3}}>Total exercice {year}</span>
                       <span style={{fontSize:15,fontWeight:600,color:sage}}>{fmt(proC.totalEntrees)}</span>
                     </div>
                   </div>
@@ -877,7 +892,7 @@ export default function Home() {
       {(modal==="addSaving"||modal==="editSaving")&&<SavingForm initial={editItem} onSubmit={modal==="editSaving"?editSaving:addSaving} onClose={closeModal} title={modal==="editSaving"?"Modifier l'épargne":"Nouvelle épargne"}/>}
 
       {/* ── Pro modals ── */}
-      {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"}/>}
+      {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year}/>}
       {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
     </div>
