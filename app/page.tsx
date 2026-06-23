@@ -8,6 +8,7 @@ const monthKey = (y,m) => `${y}-${String(m+1).padStart(2,"0")}`;
 
 const EXPENSE_CATEGORIES = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🎭 Loisirs","👕 Vêtements","🎓 Éducation","🐾 Animaux","🔧 Divers"];
 const SAVINGS_TYPES = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
+const INCOME_TYPES = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Autre"];
 
 // ─── Styles ───
 const inputStyle = {background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px 14px",color:"#e8edf5",fontSize:14,outline:"none",fontFamily:"'DM Sans',sans-serif",width:"100%",boxSizing:"border-box"};
@@ -72,6 +73,34 @@ function ExpenseForm({initial,onSubmit,onClose,title}){
         <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0" style={inputStyle}/></Field>
         <Field label="Catégorie"><select value={category} onChange={e=>setCategory(e.target.value)} style={selectStyle}>{EXPENSE_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></Field>
         <Field label="Date"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inputStyle}/></Field>
+        <div style={{display:"flex",gap:12,marginTop:8}}>
+          <button onClick={onClose} style={btnGhost}>Annuler</button>
+          <button onClick={handle} style={btnPrimary}>{initial?.id?"Enregistrer":"Ajouter"}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function IncomeForm({initial,onSubmit,onClose,title}){
+  const [type,setType]=useState(initial?.type||INCOME_TYPES[0]);
+  const [customType,setCustomType]=useState("");
+  const [amount,setAmount]=useState(initial?.amount||"");
+  const handle=()=>{
+    if(!amount)return;
+    const finalType=type==="Autre"&&customType?customType:type;
+    onSubmit({...(initial||{}),type:finalType,amount:parseFloat(amount)});
+  };
+  return(
+    <Modal title={title} onClose={onClose}>
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <Field label="Source de revenu">
+          <select value={type} onChange={e=>setType(e.target.value)} style={selectStyle}>
+            {INCOME_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </Field>
+        {type==="Autre"&&<Field label="Précisez"><input value={customType} onChange={e=>setCustomType(e.target.value)} placeholder="ex: Bonus" style={inputStyle}/></Field>}
+        <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0" style={inputStyle}/></Field>
         <div style={{display:"flex",gap:12,marginTop:8}}>
           <button onClick={onClose} style={btnGhost}>Annuler</button>
           <button onClick={handle} style={btnPrimary}>{initial?.id?"Enregistrer":"Ajouter"}</button>
@@ -168,7 +197,7 @@ export default function Home(){
   // Data states
   const [recurring,setRecurring]=useState([]);
   const [expenses,setExpenses]=useState([]);
-  const [income,setIncome]=useState({estimated:0,real_income:0});
+  const [incomes,setIncomes]=useState([]);
   const [savings,setSavings]=useState([]);
 
   const mk = monthKey(year,month);
@@ -193,13 +222,13 @@ export default function Home(){
     const [{data:rec},{data:exp},{data:inc},{data:sav}]=await Promise.all([
       supabase.from("recurring_expenses").select("*").eq("user_id",userId).order("created_at"),
       supabase.from("one_time_expenses").select("*").eq("user_id",userId).eq("month_key",mk).order("date"),
-      supabase.from("income").select("*").eq("user_id",userId).eq("month_key",mk).maybeSingle(),
+      supabase.from("income").select("*").eq("user_id",userId).eq("month_key",mk).order("created_at"),
       supabase.from("savings").select("*").eq("user_id",userId).order("created_at"),
     ]);
 
     setRecurring(rec||[]);
     setExpenses(exp||[]);
-    setIncome(inc||{estimated:0,real_income:0});
+    setIncomes(inc||[]);
     setSavings(sav||[]);
   },[userId,mk]);
 
@@ -211,10 +240,10 @@ export default function Home(){
     const totalOneTime=expenses.reduce((s,e)=>s+Number(e.amount),0);
     const totalSpent=totalRecurring+totalOneTime;
     const totalSavings=savings.reduce((s,e)=>s+Number(e.amount),0);
-    const budget=Number(income.real_income)||Number(income.estimated)||0;
+    const budget=incomes.reduce((s,i)=>s+Number(i.amount),0);
     const remaining=budget-totalSpent;
     return{totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining};
-  },[recurring,expenses,income,savings]);
+  },[recurring,expenses,incomes,savings]);
 
   // ─── CRUD: Recurring ───
   const addRecurring=async(item)=>{
@@ -245,13 +274,16 @@ export default function Home(){
   };
 
   // ─── CRUD: Income ───
-  const setIncomeField=async(field,val)=>{
-    const value=parseFloat(val)||0;
-    if(income.id){
-      await supabase.from("income").update({[field]:value}).eq("id",income.id);
-    } else {
-      await supabase.from("income").insert({user_id:userId,month_key:mk,[field]:value});
-    }
+  const addIncome=async(item)=>{
+    await supabase.from("income").insert({user_id:userId,month_key:mk,type:item.type,amount:item.amount});
+    loadData();setModal(null);
+  };
+  const editIncomeItem=async(item)=>{
+    await supabase.from("income").update({type:item.type,amount:item.amount}).eq("id",item.id);
+    loadData();setModal(null);setEditItem(null);
+  };
+  const delIncome=async(id)=>{
+    await supabase.from("income").delete().eq("id",id);
     loadData();
   };
 
@@ -281,6 +313,7 @@ export default function Home(){
 
   const tabs=[
     {id:"dashboard",icon:"📊",label:"Tableau de bord"},
+    {id:"income",icon:"💼",label:"Revenus"},
     {id:"recurring",icon:"🔄",label:"Récurrentes"},
     {id:"expenses",icon:"💸",label:"Ponctuelles"},
     {id:"savings",icon:"🏦",label:"Épargne"},
@@ -328,7 +361,7 @@ export default function Home(){
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16}}>
               {[
-                {label:"Budget (revenu)",value:fmt(computed.budget),color:"#3b82f6",sub:income.real_income?`Réel: ${fmt(income.real_income)}`:`Estimé: ${fmt(income.estimated)}`},
+                {label:"Revenus du mois",value:fmt(computed.budget),color:"#3b82f6",sub:incomes.length?`${incomes.length} source(s) de revenu`:"Aucun revenu saisi"},
                 {label:"Total dépensé",value:fmt(computed.totalSpent),color:"#ef4444",sub:`Récurrent: ${fmt(computed.totalRecurring)} · Ponctuel: ${fmt(computed.totalOneTime)}`},
                 {label:"Reste disponible",value:fmt(computed.remaining),color:computed.remaining>=0?"#10b981":"#ef4444",sub:computed.remaining>=0?"En bonne voie 👍":"Attention ⚠️"},
                 {label:"Épargne totale",value:fmt(computed.totalSavings),color:"#f59e0b",sub:`${savings.length} placement(s)`},
@@ -344,15 +377,24 @@ export default function Home(){
 
             {/* Income */}
             <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:"24px 20px"}}>
-              <h3 style={{margin:"0 0 16px",fontSize:15,color:"#8899aa",fontWeight:600}}>💼 Revenus — {MONTHS_FR[month]} {year}</h3>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                <Field label="Revenu estimé">
-                  <input type="number" defaultValue={income.estimated||""} onBlur={e=>setIncomeField("estimated",e.target.value)} placeholder="0" style={inputStyle}/>
-                </Field>
-                <Field label="Revenu réel">
-                  <input type="number" defaultValue={income.real_income||""} onBlur={e=>setIncomeField("real_income",e.target.value)} placeholder="0" style={inputStyle}/>
-                </Field>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h3 style={{margin:0,fontSize:15,color:"#8899aa",fontWeight:600}}>💼 Revenus — {MONTHS_FR[month]} {year}</h3>
+                <button onClick={()=>setModal("addIncome")} style={{...btnPrimary,padding:"8px 16px",fontSize:12}}>+ Ajouter</button>
               </div>
+              {incomes.length===0
+                ?<p style={{color:"#5a6a80",fontSize:13,margin:0}}>Aucun revenu ce mois — <span style={{color:"#5a8ade",cursor:"pointer"}} onClick={()=>setTab("income")}>Gérer les revenus</span></p>
+                :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {incomes.map(inc=>(
+                    <div key={inc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                      <span style={{fontSize:13,color:"#c0cddf"}}>{inc.type}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:"#10b981"}}>{fmt(inc.amount)}</span>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",justifyContent:"flex-end",paddingTop:4,borderTop:"1px solid rgba(255,255,255,0.06)",marginTop:4}}>
+                    <span style={{fontSize:13,color:"#6b7d94"}}>Total : <strong style={{color:"#10b981"}}>{fmt(computed.budget)}</strong></span>
+                  </div>
+                </div>
+              }
             </div>
 
             {/* Budget bar */}
@@ -396,6 +438,40 @@ export default function Home(){
                 ));
               })()}
             </div>
+          </div>
+        )}
+
+        {/* ── INCOME ── */}
+        {tab==="income"&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <h2 style={{margin:0,fontSize:18,fontFamily:"'Playfair Display',serif"}}>Revenus</h2>
+                <p style={{margin:"4px 0 0",fontSize:13,color:"#5a6a80"}}>{MONTHS_FR[month]} {year} — Total : {fmt(computed.budget)}</p>
+              </div>
+              <button onClick={()=>setModal("addIncome")} style={btnPrimary}>+ Ajouter</button>
+            </div>
+            {incomes.length===0?<p style={{color:"#5a6a80",textAlign:"center",padding:40}}>Aucun revenu ce mois</p>:
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {incomes.map(inc=>(
+                  <div key={inc.id} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:0,left:0,bottom:0,width:3,background:"#10b981",opacity:0.7}}/>
+                    <div style={{paddingLeft:8}}>
+                      <div style={{fontSize:15,fontWeight:600,color:"#e8edf5"}}>{inc.type}</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <span style={{fontSize:17,fontWeight:700,color:"#10b981"}}>{fmt(inc.amount)}</span>
+                      <button onClick={()=>{setEditItem(inc);setModal("editIncome")}} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#8899aa",cursor:"pointer",fontSize:14}}>✏️</button>
+                      <button onClick={()=>delIncome(inc.id)} style={{background:"rgba(239,68,68,0.1)",border:"none",borderRadius:8,width:32,height:32,color:"#ef4444",cursor:"pointer",fontSize:14}}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{background:"rgba(16,185,129,0.08)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:14,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:14,color:"#8899aa",fontWeight:600}}>Total revenus</span>
+                  <span style={{fontSize:20,fontWeight:700,color:"#10b981",fontFamily:"'Playfair Display',serif"}}>{fmt(computed.budget)}</span>
+                </div>
+              </div>
+            }
           </div>
         )}
 
@@ -495,6 +571,9 @@ export default function Home(){
       </div>
 
       {/* Modals */}
+      {(modal==="addIncome"||modal==="editIncome")&&(
+        <IncomeForm initial={editItem} onSubmit={modal==="editIncome"?editIncomeItem:addIncome} onClose={()=>{setModal(null);setEditItem(null)}} title={modal==="editIncome"?"Modifier le revenu":"Nouveau revenu"}/>
+      )}
       {(modal==="addRecurring"||modal==="editRecurring")&&(
         <RecurringForm initial={editItem} onSubmit={modal==="editRecurring"?editRecurringItem:addRecurring} onClose={()=>{setModal(null);setEditItem(null)}} title={modal==="editRecurring"?"Modifier la dépense":"Nouvelle dépense récurrente"}/>
       )}
