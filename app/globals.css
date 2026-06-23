@@ -1,26 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #0a0f1a;
+  --bg-secondary: #111927;
+  --bg-card: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.08);
+  --text-primary: #e8edf5;
+  --text-secondary: #8899aa;
+  --text-muted: #5a6a80;
+  --text-label: #6b7d94;
+  --blue: #3b82f6;
+  --blue-dark: #2563eb;
+  --red: #ef4444;
+  --green: #10b981;
+  --amber: #f59e0b;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  background: linear-gradient(160deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0d1520 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+input, select, button {
+  font-family: 'DM Sans', sans-serif;
+}
+
+input:focus, select:focus {
+  border-color: var(--blue) !important;
+  outline: none;
 }
