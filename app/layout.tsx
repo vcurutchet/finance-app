@@ -1,11 +1,11 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "FinanceFlow — Gestion de finances",
-  description: "App de gestion de finances personnelles",
+  title: "Kontu — Gestion de finances",
+  description: "Gestion de finances personnelles et professionnelles",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <body>{children}</body>
