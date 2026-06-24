@@ -174,18 +174,22 @@ function EntryForm({initial,onSubmit,onClose,title,defaultYear}: any) {
     </Modal>
   );
 }
-function ExitForm({initial,onSubmit,onClose,title,defaultYear}: any) {
-  const [cat,setCat]       = useState(initial?.category||EXIT_CATS[0]);
-  const [label,setLabel]   = useState(initial?.label||"");
-  const [amount,setAmt]    = useState(initial?.amount||"");
-  const [date,setDate]     = useState(initial?.date||new Date().toISOString().slice(0,10));
-  const [exYear,setExYear] = useState(initial?.exercise_year??defaultYear??2026);
-  const go=()=>{if(!amount)return;onSubmit({...(initial||{}),category:cat,label,amount:parseFloat(amount),date,exercise_year:Number(exYear)})};
+function ExitForm({initial,onSubmit,onClose,title,defaultYear,defaultMk}: any) {
+  const [cat,setCat]         = useState(initial?.category||EXIT_CATS[0]);
+  const [label,setLabel]     = useState(initial?.label||"");
+  const [amount,setAmt]      = useState(initial?.amount||"");
+  const [date,setDate]       = useState(initial?.date||new Date().toISOString().slice(0,10));
+  const [exYear,setExYear]   = useState(initial?.exercise_year??defaultYear??2026);
+  const [imputMk,setImputMk] = useState(initial?.imputation_month_key||defaultMk||"");
+  const go=()=>{
+    if(!amount)return;
+    onSubmit({...(initial||{}),category:cat,label,amount:parseFloat(amount),date,exercise_year:Number(exYear),imputation_month_key:imputMk||null});
+  };
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <Field label="Catégorie"><select value={cat} onChange={e=>setCat(e.target.value)} style={sel}>{EXIT_CATS.map(c=><option key={c}>{c}</option>)}</select></Field>
-        <Field label="Libellé (optionnel)"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : Salaire novembre 2025" style={inp}/></Field>
+        <Field label="Libellé (optionnel)"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : TVA novembre 2025" style={inp}/></Field>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
           <Field label="Exercice comptable">
@@ -194,7 +198,17 @@ function ExitForm({initial,onSubmit,onClose,title,defaultYear}: any) {
             </select>
           </Field>
         </div>
-        <Field label="Date de paiement"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Date de paiement"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
+          <Field label="Mois comptable">
+            <input type="month" value={imputMk} onChange={e=>setImputMk(e.target.value)} style={inp} title="Mois auquel cette sortie est rattachée dans le bilan"/>
+          </Field>
+        </div>
+        {imputMk&&imputMk!==defaultMk&&(
+          <div style={{background:"rgba(160,132,92,0.08)",borderRadius:10,padding:"10px 14px",fontSize:12,color:amber}}>
+            Imputée sur <strong>{imputMk}</strong> dans le bilan — payée le {date}
+          </div>
+        )}
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -375,7 +389,11 @@ export default function Home() {
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
       const ents=allEntries.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
-      const exts=allExits.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
+      const exts=allExits.filter(e=>{
+        const effMk=e.imputation_month_key||e.month_key;
+        const exOk=!filterExercise||!e.exercise_year||e.exercise_year===year;
+        return effMk===k&&exOk;
+      });
       const bycat=(cat: string)=>exts.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
       const caTTC=ents.reduce((s,e)=>s+Number(e.amount),0);
       const tvaCalc=caTTC/6;
@@ -418,8 +436,8 @@ export default function Home() {
   const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
   const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
-  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
-  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
+  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||mk});loadProData();setModal(null)};
+  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||i.month_key}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delExit     = async(id: string)=>{await supabase.from("pro_exits").delete().eq("id",id);loadProData()};
   const saveInitBal = async(bal: number)=>{
     await supabase.from("pro_treasury").upsert({user_id:userId,initial_balance:bal,balance:bal,alert_threshold:proTreasury?.alert_threshold||0},{onConflict:"user_id"});
@@ -751,9 +769,10 @@ export default function Home() {
                       return (
                       <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proExits.length-1?`1px solid #F2EFE9`:"none",opacity:offYear?0.55:1}}>
                         <div>
-                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6}}>
+                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                             {e.label||e.category}
                             {offYear&&<span style={{fontSize:10,fontWeight:600,background:"rgba(160,132,92,0.12)",color:amber,borderRadius:4,padding:"1px 6px"}}>Ex. {e.exercise_year}</span>}
+                            {e.imputation_month_key&&e.imputation_month_key!==mk&&<span style={{fontSize:10,fontWeight:600,background:"rgba(27,77,110,0.08)",color:ocean,borderRadius:4,padding:"1px 6px"}}>{e.imputation_month_key}</span>}
                           </div>
                           <div style={{fontSize:11,color:text3}}>{e.label?`${e.category} · `:""}{e.date}</div>
                         </div>
@@ -1007,7 +1026,7 @@ export default function Home() {
 
       {/* ── Pro modals ── */}
       {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year}/>}
-      {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year}/>}
+      {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year} defaultMk={mk}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
     </div>
   );
