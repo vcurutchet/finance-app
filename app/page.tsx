@@ -170,14 +170,13 @@ function EntryForm({initial,onSubmit,onClose,title,defaultYear,caMonths=[]}: any
           </Field>
         </div>
         <Field label="Date de réception"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
-        {caMonths.length>0&&(
-          <Field label="CA facturé correspondant">
-            <select value={caMk} onChange={e=>setCaMk(e.target.value)} style={sel}>
-              <option value="">— Encaissement non lié —</option>
-              {caMonths.map((m:any)=><option key={m.key} value={m.key}>{m.label}</option>)}
-            </select>
-          </Field>
-        )}
+        <Field label="CA facturé correspondant">
+          <select value={caMk} onChange={e=>setCaMk(e.target.value)} style={sel}>
+            <option value="">— Encaissement non lié —</option>
+            <option value={`exercice-${(defaultYear??2026)-1}`}>Exercice {(defaultYear??2026)-1} (précédent)</option>
+            {caMonths.map((m:any)=><option key={m.key} value={m.key}>{m.label}</option>)}
+          </select>
+        </Field>
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
