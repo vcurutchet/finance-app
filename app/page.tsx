@@ -1206,18 +1206,19 @@ export default function Home() {
                       const liveSorties=n(fcDraft.frais)+n(fcDraft.salaire)+n(fcDraft.per)+n(fcDraft.charges_sociales)+n(fcDraft.tva)+n(fcDraft.is_reel)+n(fcDraft.divers);
                       const liveTreso=n(fcDraft.ca_ttc)-liveSorties;
                       const upd=(k:string,v:string)=>setFcDraft((d:any)=>({...d,[k]:parseFloat(v)||0}));
+                      const fi:React.CSSProperties={background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:"100%",boxSizing:"border-box"};
                       return (
                         <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:"rgba(27,77,110,0.04)"}}>
-                          <td style={{padding:"8px 10px",fontWeight:700,color:ocean,fontSize:13}}>{row.label}</td>
-                          <td style={{padding:"8px 10px"}}><span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:"rgba(160,132,92,0.1)",color:amber}}>Prévu</span></td>
-                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.ca_ttc||""} onChange={e=>upd("ca_ttc",e.target.value)} placeholder="0" style={fcInp(90)} autoFocus/></td>
-                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.frais||""} onChange={e=>upd("frais",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
-                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.salaire||""} onChange={e=>upd("salaire",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
-                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.charges_sociales||""} onChange={e=>upd("charges_sociales",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
-                          <td style={{padding:"8px 10px",textAlign:"right",color:liveIS?basque:text3,fontStyle:"italic",fontSize:12}}>{liveIS?fmt(liveIS):<span style={{opacity:0.3}}>—</span>}</td>
-                          <td style={{padding:"8px 10px",textAlign:"right",fontWeight:600,fontSize:12,color:liveTreso>0?sage:liveTreso<0?basque:text3}}>{liveTreso?fmt(liveTreso):<span style={{opacity:0.3}}>—</span>}</td>
-                          <td style={{padding:"8px 10px",textAlign:"right",fontSize:11,color:text3}}>après enreg.</td>
-                          <td style={{padding:"6px 8px"}}>
+                          <td style={{padding:"12px 10px",fontWeight:700,color:ocean,fontSize:13}}>{row.label}</td>
+                          <td style={{padding:"12px 10px"}}><span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:"rgba(160,132,92,0.1)",color:amber}}>Prévu</span></td>
+                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.ca_ttc||""} onChange={e=>upd("ca_ttc",e.target.value)} placeholder="0" style={fi} autoFocus/></td>
+                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.frais||""} onChange={e=>upd("frais",e.target.value)} placeholder="0" style={fi}/></td>
+                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.salaire||""} onChange={e=>upd("salaire",e.target.value)} placeholder="0" style={fi}/></td>
+                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.charges_sociales||""} onChange={e=>upd("charges_sociales",e.target.value)} placeholder="0" style={fi}/></td>
+                          <td style={{padding:"12px 10px",textAlign:"right",color:liveIS?basque:text3,fontStyle:"italic",fontSize:13}}>{liveIS?fmt(liveIS):<span style={{opacity:0.3}}>—</span>}</td>
+                          <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,fontSize:13,color:liveTreso>0?sage:liveTreso<0?basque:text3}}>{liveTreso?fmt(liveTreso):<span style={{opacity:0.3}}>—</span>}</td>
+                          <td style={{padding:"12px 10px",textAlign:"right",fontSize:11,color:text3}}>après enreg.</td>
+                          <td style={{padding:"12px 10px"}}>
                             <div style={{display:"flex",gap:4}}>
                               <button onClick={saveInlineFc} style={{background:ocean,border:"none",borderRadius:6,color:"#fff",width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
                               <button onClick={()=>setEditingFk(null)} style={{...iconBtn(true),width:28,height:28,fontSize:11}}>✕</button>
