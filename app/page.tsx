@@ -457,8 +457,16 @@ export default function Home() {
   const delSaving     = async(id: string)=>{await supabase.from("savings").delete().eq("id",id);loadData()};
 
   // ─── Pro CRUD ───
-  const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null});loadProData();setModal(null)};
-  const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
+  const addEntry    = async(i: any)=>{
+    const {error}=await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null});
+    if(error){console.error("addEntry:",error.message);alert("Erreur: "+error.message);return;}
+    loadProData();setModal(null);
+  };
+  const editEntry   = async(i: any)=>{
+    const {error}=await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null}).eq("id",i.id);
+    if(error){console.error("editEntry:",error.message);alert("Erreur: "+error.message);return;}
+    loadProData();setModal(null);setEditItem(null);
+  };
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
   const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||mk});loadProData();setModal(null)};
   const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||i.month_key}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
