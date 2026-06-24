@@ -229,7 +229,7 @@ function InitBalanceModal({current,onSubmit,onClose}: any) {
 }
 
 function ForecastForm({initial,monthLabel,onSubmit,onClose}: any) {
-  const [ca,setCa]           = useState(String(initial?.ca_ttc||""));
+  const [ca,setCa]           = useState(String(initial?.ca_declare||""));
   const [frais,setFrais]     = useState(String(initial?.frais||""));
   const [salaire,setSal]     = useState(String(initial?.salaire||""));
   const [per,setPer]         = useState(String(initial?.per||""));
@@ -238,11 +238,11 @@ function ForecastForm({initial,monthLabel,onSubmit,onClose}: any) {
   const [isR,setIs]          = useState(String(initial?.is_reel||""));
   const [divers,setDiv]      = useState(String(initial?.divers||""));
   const [applyAll,setAll]    = useState(false);
-  const go=()=>onSubmit({ca_ttc:parseFloat(ca)||0,frais:parseFloat(frais)||0,salaire:parseFloat(salaire)||0,per:parseFloat(per)||0,charges_sociales:parseFloat(charges)||0,tva:parseFloat(tva)||0,is_reel:parseFloat(isR)||0,divers:parseFloat(divers)||0},applyAll);
+  const go=()=>onSubmit({ca_declare:parseFloat(ca)||0,frais:parseFloat(frais)||0,salaire:parseFloat(salaire)||0,per:parseFloat(per)||0,charges_sociales:parseFloat(charges)||0,tva:parseFloat(tva)||0,is_reel:parseFloat(isR)||0,divers:parseFloat(divers)||0},applyAll);
   return (
     <Modal title={`Prévisionnel — ${monthLabel}`} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <Field label="CA TTC prévu (€)"><input type="number" value={ca} onChange={e=>setCa(e.target.value)} placeholder="0" style={inp}/></Field>
+        <Field label="CA Facturé prévu (€)"><input type="number" value={ca} onChange={e=>setCa(e.target.value)} placeholder="0" style={inp}/></Field>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <Field label="Frais pro (€)"><input type="number" value={frais} onChange={e=>setFrais(e.target.value)} placeholder="0" style={inp}/></Field>
           <Field label="Salaire (€)"><input type="number" value={salaire} onChange={e=>setSal(e.target.value)} placeholder="0" style={inp}/></Field>
@@ -260,7 +260,7 @@ function ForecastForm({initial,monthLabel,onSubmit,onClose}: any) {
           <input type="checkbox" checked={applyAll} onChange={e=>setAll(e.target.checked)} style={{width:16,height:16,accentColor:ocean}}/>
           Appliquer à tous les mois suivants
         </label>
-        <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.ca_ttc}/>
+        <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.ca_declare}/>
       </div>
     </Modal>
   );
@@ -324,7 +324,8 @@ export default function Home() {
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
   const [editingFk,setEditingFk] = useState<string|null>(null);
-  const [fcDraft,setFcDraft]     = useState<any>({ca_ttc:0,frais:0,salaire:0,per:0,charges_sociales:0,tva:0,is_reel:0,divers:0});
+  const [fcDraft,setFcDraft]     = useState<any>({ca_declare:0,frais:0,salaire:0,per:0,charges_sociales:0,tva:0,is_reel:0,divers:0});
+  const [caDeclareDraft,setCaDeclareDraft] = useState<string>("");
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
 
   // Perso data
@@ -388,6 +389,11 @@ export default function Home() {
     if(!userId)return;
     loadPrefs();loadData();loadProData();
   },[userId,mk]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(()=>{
+    const fc=proForecast.find((f:any)=>f.month_key===mk);
+    setCaDeclareDraft(fc?.ca_declare?String(fc.ca_declare):"");
+  },[mk,proForecast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMode=async(m:"perso"|"pro")=>{
     setAppMode(m);
@@ -472,7 +478,7 @@ export default function Home() {
     return proAnnual.map((actual,i)=>{
       const fc=proForecast.find((f:any)=>f.month_key===actual.k)||null;
       const isActual=actual.hasData;
-      const caTTC      =isActual?actual.caTTC      :(fc?.ca_ttc||0);
+      const caTTC      =(fc?.ca_declare||0)>0?fc!.ca_declare:(isActual?actual.caTTC:(fc?.ca_ttc||0));
       const frais      =isActual?actual.frais      :(fc?.frais||0);
       const salaire    =isActual?actual.salaire    :(fc?.salaire||0);
       const per        =isActual?actual.per        :(fc?.per||0);
@@ -527,12 +533,24 @@ export default function Home() {
   };
   const startEditFc=(row:any)=>{
     setEditingFk(row.k);
-    setFcDraft({ca_ttc:row.fc?.ca_ttc??row.caTTC,frais:row.fc?.frais??row.frais,salaire:row.fc?.salaire??row.salaire,per:row.fc?.per??row.per,charges_sociales:row.fc?.charges_sociales??row.chargesPay,tva:row.fc?.tva??row.tvaReelle,is_reel:row.fc?.is_reel??row.isReelVal,divers:row.fc?.divers??row.divers});
+    setFcDraft({ca_declare:row.fc?.ca_declare||row.caTTC,frais:row.fc?.frais??row.frais,salaire:row.fc?.salaire??row.salaire,per:row.fc?.per??row.per,charges_sociales:row.fc?.charges_sociales??row.chargesPay,tva:row.fc?.tva??row.tvaReelle,is_reel:row.fc?.is_reel??row.isReelVal,divers:row.fc?.divers??row.divers});
   };
   const saveInlineFc=async()=>{
     if(!editingFk||!userId)return;
-    await supabase.from("pro_forecast").upsert({user_id:userId,month_key:editingFk,...fcDraft},{onConflict:"user_id,month_key"});
+    const existing=proForecast.find((f:any)=>f.month_key===editingFk)||{};
+    const {id:_i,created_at:_c,...rest}=existing as any;
+    const {error}=await supabase.from("pro_forecast").upsert({...rest,user_id:userId,month_key:editingFk,...fcDraft},{onConflict:"user_id,month_key"});
+    if(error){console.error("pro_forecast upsert error:",error.message);alert("Erreur sauvegarde: "+error.message);return;}
     loadProData();setEditingFk(null);
+  };
+
+  const saveCaDeclare=async()=>{
+    if(!userId)return;
+    const existing=proForecast.find((f:any)=>f.month_key===mk)||{};
+    const {id:_i,created_at:_c,...rest}=existing as any;
+    const {error}=await supabase.from("pro_forecast").upsert({...rest,user_id:userId,month_key:mk,ca_declare:parseFloat(caDeclareDraft)||0},{onConflict:"user_id,month_key"});
+    if(error){console.error("saveCaDeclare error:",error.message);return;}
+    loadProData();
   };
   const saveForecast=async(targetMk:string,data:any,applyAll:boolean)=>{
     const yearKeys=Array.from({length:12},(_,i)=>monthKey(year,i));
@@ -560,7 +578,7 @@ export default function Home() {
     {id:"savings",   label:"Épargne"},
   ];
   const proTabs=[
-    {id:"pro-mouvements", label:"Mouvements"},
+    {id:"pro-mouvements", label:"Suivi mensuel"},
     {id:"pro-annual",     label:"Bilan annuel"},
     {id:"pro-tresorerie", label:"Trésorerie"},
   ];
@@ -630,7 +648,7 @@ export default function Home() {
           <nav style={{width:220,flexShrink:0,background:"#FAFAF7",borderRight:`1px solid ${border}`,position:"sticky",top:60,height:"calc(100vh - 60px)",overflowY:"auto",padding:"28px 0",display:"flex",flexDirection:"column",gap:1}}>
             <div style={{padding:"0 20px 14px",fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase"}}>Curutchet Consulting</div>
             {[
-              {id:"pro-mouvements",  label:"Mouvements"},
+              {id:"pro-mouvements",  label:"Suivi mensuel"},
               {id:"pro-annual",      label:"Bilan annuel"},
               {id:"pro-tresorerie",  label:"Trésorerie"},
               {id:"pro-previsionnel",label:"Prévisionnel"},
@@ -824,7 +842,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ══ PRO — Mouvements ══ */}
+        {/* ══ PRO — Suivi mensuel ══ */}
         {appMode==="pro"&&proTab==="pro-mouvements"&&(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
 
@@ -833,6 +851,26 @@ export default function Home() {
               <button onClick={prevMonth} disabled={year===2026&&month===0} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:year===2026&&month===0?"default":"pointer",padding:"4px 8px",lineHeight:1,opacity:year===2026&&month===0?0.2:1}}>‹</button>
               <div style={{fontFamily:serif,fontSize:24,fontWeight:400,color:text,lineHeight:1}}>{MONTHS_FR[month]} {year}</div>
               <button onClick={nextMonth} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>›</button>
+            </div>
+
+            {/* CA Facturé ce mois */}
+            <div style={{...card,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>CA Facturé — {MONTHS_FR[month]} {year}</div>
+                <div style={{fontSize:12,color:text3,lineHeight:1.5}}>Montant facturé (engagement comptable), indépendant des encaissements</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <input
+                  type="number"
+                  value={caDeclareDraft}
+                  onChange={e=>setCaDeclareDraft(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&saveCaDeclare()}
+                  placeholder="0"
+                  style={{background:"#FAFAF8",border:`1.5px solid ${border}`,borderRadius:10,padding:"10px 14px",color:text,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif",width:160,textAlign:"right",transition:"border-color 0.15s"}}
+                />
+                <span style={{fontSize:13,color:text3}}>€</span>
+                <button onClick={saveCaDeclare} style={{...btnP,fontSize:12,padding:"10px 18px"}}>Enregistrer</button>
+              </div>
             </div>
 
             {/* Solde initial — janvier uniquement */}
@@ -1182,7 +1220,7 @@ export default function Home() {
                     {[
                       {h:"Mois",       w:64},
                       {h:"Statut",     w:80},
-                      {h:"CA TTC",     w:110},
+                      {h:"CA Facturé", w:110},
                       {h:"Frais pro",  w:100},
                       {h:"Salaire",    w:100},
                       {h:"Charges",    w:100},
@@ -1201,17 +1239,17 @@ export default function Home() {
                     const fcInp=(w:number):React.CSSProperties=>({background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:w,minWidth:w});
                     if(isEditing){
                       const n=(v:any)=>parseFloat(v)||0;
-                      const liveBenef=n(fcDraft.ca_ttc)/1.2-n(fcDraft.frais)-n(fcDraft.charges_sociales)-n(fcDraft.salaire);
+                      const liveBenef=n(fcDraft.ca_declare)/1.2-n(fcDraft.frais)-n(fcDraft.charges_sociales)-n(fcDraft.salaire);
                       const liveIS=Math.max(0,liveBenef*0.15);
                       const liveSorties=n(fcDraft.frais)+n(fcDraft.salaire)+n(fcDraft.per)+n(fcDraft.charges_sociales)+n(fcDraft.tva)+n(fcDraft.is_reel)+n(fcDraft.divers);
-                      const liveTreso=n(fcDraft.ca_ttc)-liveSorties;
+                      const liveTreso=n(fcDraft.ca_declare)-liveSorties;
                       const upd=(k:string,v:string)=>setFcDraft((d:any)=>({...d,[k]:parseFloat(v)||0}));
                       const fi:React.CSSProperties={background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:"100%",boxSizing:"border-box"};
                       return (
                         <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:"rgba(27,77,110,0.04)"}}>
                           <td style={{padding:"12px 10px",fontWeight:700,color:ocean,fontSize:13}}>{row.label}</td>
                           <td style={{padding:"12px 10px"}}><span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:"rgba(160,132,92,0.1)",color:amber}}>Prévu</span></td>
-                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.ca_ttc||""} onChange={e=>upd("ca_ttc",e.target.value)} placeholder="0" style={fi} autoFocus/></td>
+                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.ca_declare||""} onChange={e=>upd("ca_declare",e.target.value)} placeholder="0" style={fi} autoFocus/></td>
                           <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.frais||""} onChange={e=>upd("frais",e.target.value)} placeholder="0" style={fi}/></td>
                           <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.salaire||""} onChange={e=>upd("salaire",e.target.value)} placeholder="0" style={fi}/></td>
                           <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.charges_sociales||""} onChange={e=>upd("charges_sociales",e.target.value)} placeholder="0" style={fi}/></td>
@@ -1252,7 +1290,7 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              Mois <span style={{color:sage,fontWeight:600}}>Réel</span> : données saisies dans Mouvements &nbsp;·&nbsp; Mois <span style={{color:amber,fontWeight:600}}>Prévu</span> : données prévisionnelles &nbsp;·&nbsp; IS = 15% × (CA HT − Frais − Charges − Salaire)
+              Mois <span style={{color:sage,fontWeight:600}}>Réel</span> : données saisies dans Suivi mensuel &nbsp;·&nbsp; Mois <span style={{color:amber,fontWeight:600}}>Prévu</span> : données prévisionnelles &nbsp;·&nbsp; IS = 15% × (CA HT − Frais − Charges − Salaire)
             </p>
           </div>
         )}
