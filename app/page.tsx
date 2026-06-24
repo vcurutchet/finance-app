@@ -449,7 +449,10 @@ export default function Home() {
   };
 
   const closeModal=()=>{setModal(null);setEditItem(null)};
-  const prevMonth=()=>{if(month===0){setMonth(11);setYear(y=>y-1)}else setMonth(m=>m-1)};
+  const prevMonth=()=>{
+    if(appMode==="pro"&&year===2026&&month===0)return;
+    if(month===0){setMonth(11);setYear(y=>y-1)}else setMonth(m=>m-1);
+  };
   const nextMonth=()=>{if(month===11){setMonth(0);setYear(y=>y+1)}else setMonth(m=>m+1)};
 
   if(loading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:text3}}>Chargement…</div>;
@@ -503,7 +506,7 @@ export default function Home() {
 
       {/* ── Month selector ── */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:28,padding:"36px 24px 20px"}}>
-        <button onClick={prevMonth} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:"pointer",padding:"6px 10px",lineHeight:1}}>‹</button>
+        <button onClick={prevMonth} disabled={appMode==="pro"&&year===2026&&month===0} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:appMode==="pro"&&year===2026&&month===0?"default":"pointer",padding:"6px 10px",lineHeight:1,opacity:appMode==="pro"&&year===2026&&month===0?0.2:1}}>‹</button>
         <div style={{textAlign:"center",minWidth:200}}>
           <div style={{fontFamily:serif,fontSize:30,fontWeight:400,color:text,lineHeight:1}}>{MONTHS_FR[month]}</div>
           <div style={{fontSize:13,color:text3,marginTop:6,letterSpacing:"0.5px"}}>{year}</div>
@@ -709,18 +712,20 @@ export default function Home() {
         {appMode==="pro"&&proTab==="pro-mouvements"&&(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
 
-            {/* Solde initial */}
-            <div style={{...card,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
-                <div style={{fontSize:26,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
-                  {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
+            {/* Solde initial — janvier uniquement */}
+            {year===2026&&month===0&&(
+              <div style={{...card,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
+                  <div style={{fontSize:26,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
+                    {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
+                  </div>
                 </div>
+                <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
+                  {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
+                </button>
               </div>
-              <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
-                {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
-              </button>
-            </div>
+            )}
 
             {/* Entrées / Sorties grid */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
