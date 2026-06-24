@@ -147,17 +147,18 @@ function SavingForm({initial,onSubmit,onClose,title}: any) {
 }
 
 // ─── Pro Forms ───
-function EntryForm({initial,onSubmit,onClose,title,defaultYear}: any) {
+function EntryForm({initial,onSubmit,onClose,title,defaultYear,caMonths=[]}: any) {
   const [type,setType]   = useState(initial?.type||"");
   const [amount,setAmt]  = useState(initial?.amount||"");
   const [date,setDate]   = useState(initial?.date||new Date().toISOString().slice(0,10));
   const [exYear,setExYear] = useState(initial?.exercise_year??defaultYear??2026);
-  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,amount:parseFloat(amount),date,exercise_year:Number(exYear)})};
+  const [caMk,setCaMk]   = useState(initial?.ca_month_key||"");
+  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,amount:parseFloat(amount),date,exercise_year:Number(exYear),ca_month_key:caMk||null})};
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <Field label="Type / Origine">
-          <input list="entry-type-list" value={type} onChange={e=>setType(e.target.value)} placeholder="ex : CA Janvier 2026" style={inp}/>
+          <input list="entry-type-list" value={type} onChange={e=>setType(e.target.value)} placeholder="ex : Paiement facture janvier" style={inp}/>
           <datalist id="entry-type-list">{ENTRY_SUGGESTIONS.map(t=><option key={t} value={t}/>)}</datalist>
         </Field>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -169,6 +170,14 @@ function EntryForm({initial,onSubmit,onClose,title,defaultYear}: any) {
           </Field>
         </div>
         <Field label="Date de réception"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
+        {caMonths.length>0&&(
+          <Field label="CA facturé correspondant">
+            <select value={caMk} onChange={e=>setCaMk(e.target.value)} style={sel}>
+              <option value="">— Encaissement non lié —</option>
+              {caMonths.map((m:any)=><option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+          </Field>
+        )}
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -228,43 +237,6 @@ function InitBalanceModal({current,onSubmit,onClose}: any) {
   );
 }
 
-function ForecastForm({initial,monthLabel,onSubmit,onClose}: any) {
-  const [ca,setCa]           = useState(String(initial?.ca_declare||""));
-  const [frais,setFrais]     = useState(String(initial?.frais||""));
-  const [salaire,setSal]     = useState(String(initial?.salaire||""));
-  const [per,setPer]         = useState(String(initial?.per||""));
-  const [charges,setCharges] = useState(String(initial?.charges_sociales||""));
-  const [tva,setTva]         = useState(String(initial?.tva||""));
-  const [isR,setIs]          = useState(String(initial?.is_reel||""));
-  const [divers,setDiv]      = useState(String(initial?.divers||""));
-  const [applyAll,setAll]    = useState(false);
-  const go=()=>onSubmit({ca_declare:parseFloat(ca)||0,frais:parseFloat(frais)||0,salaire:parseFloat(salaire)||0,per:parseFloat(per)||0,charges_sociales:parseFloat(charges)||0,tva:parseFloat(tva)||0,is_reel:parseFloat(isR)||0,divers:parseFloat(divers)||0},applyAll);
-  return (
-    <Modal title={`Prévisionnel — ${monthLabel}`} onClose={onClose}>
-      <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <Field label="CA Facturé prévu (€)"><input type="number" value={ca} onChange={e=>setCa(e.target.value)} placeholder="0" style={inp}/></Field>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Field label="Frais pro (€)"><input type="number" value={frais} onChange={e=>setFrais(e.target.value)} placeholder="0" style={inp}/></Field>
-          <Field label="Salaire (€)"><input type="number" value={salaire} onChange={e=>setSal(e.target.value)} placeholder="0" style={inp}/></Field>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Field label="PER / AV (€)"><input type="number" value={per} onChange={e=>setPer(e.target.value)} placeholder="0" style={inp}/></Field>
-          <Field label="Charges sociales (€)"><input type="number" value={charges} onChange={e=>setCharges(e.target.value)} placeholder="0" style={inp}/></Field>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Field label="TVA prévisionnelle (€)"><input type="number" value={tva} onChange={e=>setTva(e.target.value)} placeholder="0" style={inp}/></Field>
-          <Field label="IS prévu (€)"><input type="number" value={isR} onChange={e=>setIs(e.target.value)} placeholder="0" style={inp}/></Field>
-        </div>
-        <Field label="Divers (€)"><input type="number" value={divers} onChange={e=>setDiv(e.target.value)} placeholder="0" style={inp}/></Field>
-        <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:text2,padding:"8px 0",borderTop:`1px solid ${border}`}}>
-          <input type="checkbox" checked={applyAll} onChange={e=>setAll(e.target.checked)} style={{width:16,height:16,accentColor:ocean}}/>
-          Appliquer à tous les mois suivants
-        </label>
-        <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.ca_declare}/>
-      </div>
-    </Modal>
-  );
-}
 
 // ─── Login ───
 function LoginScreen({onLogin}: any) {
@@ -323,8 +295,6 @@ export default function Home() {
   const [proTab,setProTab]     = useState("pro-mouvements");
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
-  const [editingFk,setEditingFk] = useState<string|null>(null);
-  const [fcDraft,setFcDraft]     = useState<any>({ca_declare:0,frais:0,salaire:0,per:0,charges_sociales:0,tva:0,is_reel:0,divers:0});
   const [caDeclareDraft,setCaDeclareDraft] = useState<string>("");
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
 
@@ -434,20 +404,20 @@ export default function Home() {
 
   // Helper pour construire les lignes annuelles
   const buildAnnual=(filterExercise: boolean)=>{
-    const initBal=proTreasury?.initial_balance||0;
+    const initBal=filterExercise?0:(proTreasury?.initial_balance||0);
     let cum=initBal;
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
       const ents=allEntries.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
       const exts=allExits.filter(e=>{
-        // Bilan : placement par mois comptable + filtre exercice
-        // Trésorerie : placement par date de paiement réelle, sans filtre exercice
         const effMk=filterExercise?(e.imputation_month_key||e.month_key):e.month_key;
         const exOk=!filterExercise||!e.exercise_year||e.exercise_year===year;
         return effMk===k&&exOk;
       });
       const bycat=(cat: string)=>exts.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
-      const caTTC=ents.reduce((s,e)=>s+Number(e.amount),0);
+      const caTTC=filterExercise
+        ?(proForecast.find((f:any)=>f.month_key===k)?.ca_declare||0)
+        :ents.reduce((s,e)=>s+Number(e.amount),0);
       const tvaCalc=caTTC/6;
       const tvaReelle=bycat("TVA");
       const frais=bycat("Frais pro");
@@ -463,48 +433,15 @@ export default function Home() {
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC-totalSorties;
       cum+=tresoMois;
-      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,isReel,tresoMois,tresoTotale:cum,hasData:ents.length>0||exts.length>0};
+      const hasData=filterExercise?(caTTC>0||exts.length>0):(ents.length>0||exts.length>0);
+      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,isReel,tresoMois,tresoTotale:cum,hasData};
     });
   };
-  // Bilan annuel : filtré par exercice comptable
-  const proAnnual=useMemo(()=>buildAnnual(true),[allEntries,allExits,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Bilan annuel : filtré par exercice comptable, CA = facturé (pro_forecast.ca_declare)
+  const proAnnual=useMemo(()=>buildAnnual(true),[allEntries,allExits,proTreasury,proForecast,year]); // eslint-disable-line react-hooks/exhaustive-deps
   // Trésorerie : tous les mouvements réels (sans filtre exercice)
   const proTresoAnnual=useMemo(()=>buildAnnual(false),[allEntries,allExits,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Prévisionnel : mix réel (mois avec data) + prévisionnel (mois sans data)
-  const proProjected=useMemo(()=>{
-    const initBal=proTreasury?.initial_balance||0;
-    let cum=initBal;
-    return proAnnual.map((actual,i)=>{
-      const fc=proForecast.find((f:any)=>f.month_key===actual.k)||null;
-      const isActual=actual.hasData;
-      const caTTC      =(fc?.ca_declare||0)>0?fc!.ca_declare:(isActual?actual.caTTC:(fc?.ca_ttc||0));
-      const frais      =isActual?actual.frais      :(fc?.frais||0);
-      const salaire    =isActual?actual.salaire    :(fc?.salaire||0);
-      const per        =isActual?actual.per        :(fc?.per||0);
-      const chargesPay =isActual?actual.chargesPay :(fc?.charges_sociales||0);
-      const tvaReelle  =isActual?actual.tvaReelle  :(fc?.tva||0);
-      const isReelVal  =isActual?actual.isReel     :(fc?.is_reel||0);
-      const divers     =isActual?(actual.totalDepenses-actual.frais-actual.salaire-actual.per-actual.chargesPay-actual.isReel):(fc?.divers||0);
-      const chargesCalc=0.45*(salaire+per);
-      const benefice   =caTTC/1.2-frais-chargesPay-salaire;
-      const isCalc     =Math.max(0,benefice*0.15);
-      const totalSorties=frais+salaire+per+chargesPay+tvaReelle+isReelVal+divers;
-      const tresoMois  =caTTC-totalSorties;
-      cum+=tresoMois;
-      return {label:MONTHS_S[i],k:actual.k,isActual,caTTC,frais,salaire,per,chargesPay,divers,chargesCalc,tvaReelle,isCalc,isReelVal,totalSorties,tresoMois,tresoTotale:cum,fc};
-    });
-  },[proAnnual,proForecast,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const projectedKPIs=useMemo(()=>{
-    const totalCA   =proProjected.reduce((s,r)=>s+r.caTTC,0);
-    const totalIS   =proProjected.reduce((s,r)=>s+r.isCalc,0);
-    const tresoFin  =proProjected[11]?.tresoTotale||0;
-    const benefice  =proProjected.reduce((s,r)=>s+(r.caTTC/1.2-r.frais-r.chargesPay-r.salaire),0);
-    const nbActual  =proProjected.filter(r=>r.isActual).length;
-    const nbForecast=proProjected.filter(r=>!r.isActual).length;
-    return {totalCA,totalIS,tresoFin,benefice,nbActual,nbForecast};
-  },[proProjected]);
 
   // ─── Perso CRUD ───
   const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category});loadData();setModal(null)};
@@ -521,8 +458,8 @@ export default function Home() {
   const delSaving     = async(id: string)=>{await supabase.from("savings").delete().eq("id",id);loadData()};
 
   // ─── Pro CRUD ───
-  const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
-  const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
+  const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null});loadProData();setModal(null)};
+  const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year,ca_month_key:i.ca_month_key||null}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
   const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||mk});loadProData();setModal(null)};
   const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||i.month_key}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
@@ -531,19 +468,6 @@ export default function Home() {
     await supabase.from("pro_treasury").upsert({user_id:userId,initial_balance:bal,balance:bal,alert_threshold:proTreasury?.alert_threshold||0},{onConflict:"user_id"});
     loadProData();setModal(null);
   };
-  const startEditFc=(row:any)=>{
-    setEditingFk(row.k);
-    setFcDraft({ca_declare:row.fc?.ca_declare||row.caTTC,frais:row.fc?.frais??row.frais,salaire:row.fc?.salaire??row.salaire,per:row.fc?.per??row.per,charges_sociales:row.fc?.charges_sociales??row.chargesPay,tva:row.fc?.tva??row.tvaReelle,is_reel:row.fc?.is_reel??row.isReelVal,divers:row.fc?.divers??row.divers});
-  };
-  const saveInlineFc=async()=>{
-    if(!editingFk||!userId)return;
-    const existing=proForecast.find((f:any)=>f.month_key===editingFk)||{};
-    const {id:_i,created_at:_c,...rest}=existing as any;
-    const {error}=await supabase.from("pro_forecast").upsert({...rest,user_id:userId,month_key:editingFk,...fcDraft},{onConflict:"user_id,month_key"});
-    if(error){console.error("pro_forecast upsert error:",error.message);alert("Erreur sauvegarde: "+error.message);return;}
-    loadProData();setEditingFk(null);
-  };
-
   const saveCaDeclare=async()=>{
     if(!userId)return;
     const existing=proForecast.find((f:any)=>f.month_key===mk)||{};
@@ -552,14 +476,6 @@ export default function Home() {
     if(error){console.error("saveCaDeclare error:",error.message);return;}
     loadProData();
   };
-  const saveForecast=async(targetMk:string,data:any,applyAll:boolean)=>{
-    const yearKeys=Array.from({length:12},(_,i)=>monthKey(year,i));
-    const startIdx=yearKeys.indexOf(targetMk);
-    const months=applyAll?yearKeys.slice(startIdx):[targetMk];
-    await Promise.all(months.map(mk=>supabase.from("pro_forecast").upsert({user_id:userId,month_key:mk,...data},{onConflict:"user_id,month_key"})));
-    loadProData();setModal(null);setEditItem(null);
-  };
-
   const closeModal=()=>{setModal(null);setEditItem(null)};
   const prevMonth=()=>{
     if(appMode==="pro"&&year===2026&&month===0)return;
@@ -651,7 +567,6 @@ export default function Home() {
               {id:"pro-mouvements",  label:"Suivi mensuel"},
               {id:"pro-annual",      label:"Bilan annuel"},
               {id:"pro-tresorerie",  label:"Trésorerie"},
-              {id:"pro-previsionnel",label:"Prévisionnel"},
             ].map(item=>(
               <button key={item.id} onClick={()=>setProTab(item.id)} style={{display:"block",width:"100%",textAlign:"left",padding:"12px 20px",border:"none",borderLeft:`3px solid ${proTab===item.id?ocean:"transparent"}`,background:proTab===item.id?"rgba(27,77,110,0.06)":"transparent",color:proTab===item.id?ocean:text2,fontWeight:proTab===item.id?600:400,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all 0.12s"}}>
                 {item.label}
@@ -1001,25 +916,14 @@ export default function Home() {
         {/* ══ PRO — Bilan annuel ══ */}
         {appMode==="pro"&&proTab==="pro-annual"&&(
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — récapitulatif annuel"/>
-            <div style={{...card,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
-                <div style={{fontSize:22,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
-                  {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
-                </div>
-              </div>
-              <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
-                {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
-              </button>
-            </div>
+            <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — CA facturé, charges imputées"/>
             <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:1160}}>
                 <thead>
                   <tr style={{background:"#F7F5F0"}}>
                     {[
                       {h:"Mois",         w:72,  note:""},
-                      {h:"CA TTC",       w:100, note:""},
+                      {h:"CA Facturé",   w:100, note:"déclaré"},
                       {h:"TVA calc.",    w:90,  note:"÷ 6"},
                       {h:"TVA réelle",   w:90,  note:"payée"},
                       {h:"Frais pro",    w:90,  note:""},
@@ -1191,109 +1095,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ══ PRO — Prévisionnel ══ */}
-        {appMode==="pro"&&proTab==="pro-previsionnel"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
-            <SectionHead title={`Prévisionnel ${year}`} sub={`${projectedKPIs.nbActual} mois réels · ${projectedKPIs.nbForecast} mois prévisionnels`}/>
-
-            {/* KPIs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14}}>
-              {[
-                {label:"CA projeté",           val:projectedKPIs.totalCA,  color:ocean,                                     note:"sur l'exercice"},
-                {label:"Bénéfice projeté",     val:projectedKPIs.benefice, color:projectedKPIs.benefice>=0?sage:basque,      note:"net de charges"},
-                {label:"IS projeté",           val:projectedKPIs.totalIS,  color:basque,                                    note:"estimé 15%"},
-                {label:"Tréso fin d'exercice", val:projectedKPIs.tresoFin, color:projectedKPIs.tresoFin>=0?ocean:basque,    note:"au 31/12/"+year},
-              ].map((k,i)=>(
-                <div key={i} style={{...card,padding:"20px 22px"}}>
-                  <div style={{fontSize:10,color:text3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:10}}>{k.label}</div>
-                  <div style={{fontSize:22,fontWeight:400,fontFamily:serif,color:k.color,lineHeight:1}}>{fmt(k.val)}</div>
-                  <div style={{fontSize:11,color:text3,marginTop:8}}>{k.note}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tableau prévisionnel */}
-            <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:920}}>
-                <thead>
-                  <tr style={{background:"#F7F5F0"}}>
-                    {[
-                      {h:"Mois",       w:64},
-                      {h:"Statut",     w:80},
-                      {h:"CA Facturé", w:110},
-                      {h:"Frais pro",  w:100},
-                      {h:"Salaire",    w:100},
-                      {h:"Charges",    w:100},
-                      {h:"IS calc.",   w:95},
-                      {h:"Tréso mois", w:110},
-                      {h:"Tréso cumulée",w:120},
-                      {h:"",           w:44},
-                    ].map((h,i)=>(
-                      <th key={i} style={{padding:"12px 10px",textAlign:i===0||i===1||i===9?"left":"right",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:h.w,minWidth:h.w,borderBottom:`1px solid ${border}`}}>{h.h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {proProjected.map((row,i)=>{
-                    const isEditing=!row.isActual&&editingFk===row.k;
-                    const fcInp=(w:number):React.CSSProperties=>({background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:w,minWidth:w});
-                    if(isEditing){
-                      const n=(v:any)=>parseFloat(v)||0;
-                      const liveBenef=n(fcDraft.ca_declare)/1.2-n(fcDraft.frais)-n(fcDraft.charges_sociales)-n(fcDraft.salaire);
-                      const liveIS=Math.max(0,liveBenef*0.15);
-                      const liveSorties=n(fcDraft.frais)+n(fcDraft.salaire)+n(fcDraft.per)+n(fcDraft.charges_sociales)+n(fcDraft.tva)+n(fcDraft.is_reel)+n(fcDraft.divers);
-                      const liveTreso=n(fcDraft.ca_declare)-liveSorties;
-                      const upd=(k:string,v:string)=>setFcDraft((d:any)=>({...d,[k]:parseFloat(v)||0}));
-                      const fi:React.CSSProperties={background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:"100%",boxSizing:"border-box"};
-                      return (
-                        <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:"rgba(27,77,110,0.04)"}}>
-                          <td style={{padding:"12px 10px",fontWeight:700,color:ocean,fontSize:13}}>{row.label}</td>
-                          <td style={{padding:"12px 10px"}}><span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:"rgba(160,132,92,0.1)",color:amber}}>Prévu</span></td>
-                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.ca_declare||""} onChange={e=>upd("ca_declare",e.target.value)} placeholder="0" style={fi} autoFocus/></td>
-                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.frais||""} onChange={e=>upd("frais",e.target.value)} placeholder="0" style={fi}/></td>
-                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.salaire||""} onChange={e=>upd("salaire",e.target.value)} placeholder="0" style={fi}/></td>
-                          <td style={{padding:"12px 10px"}}><input type="number" value={fcDraft.charges_sociales||""} onChange={e=>upd("charges_sociales",e.target.value)} placeholder="0" style={fi}/></td>
-                          <td style={{padding:"12px 10px",textAlign:"right",color:liveIS?basque:text3,fontStyle:"italic",fontSize:13}}>{liveIS?fmt(liveIS):<span style={{opacity:0.3}}>—</span>}</td>
-                          <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,fontSize:13,color:liveTreso>0?sage:liveTreso<0?basque:text3}}>{liveTreso?fmt(liveTreso):<span style={{opacity:0.3}}>—</span>}</td>
-                          <td style={{padding:"12px 10px",textAlign:"right",fontSize:11,color:text3}}>après enreg.</td>
-                          <td style={{padding:"12px 10px"}}>
-                            <div style={{display:"flex",gap:4}}>
-                              <button onClick={saveInlineFc} style={{background:ocean,border:"none",borderRadius:6,color:"#fff",width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
-                              <button onClick={()=>setEditingFk(null)} style={{...iconBtn(true),width:28,height:28,fontSize:11}}>✕</button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    }
-                    return (
-                      <tr key={row.k} onClick={!row.isActual&&!editingFk?()=>startEditFc(row):undefined} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:row.isActual?"transparent":"rgba(160,132,92,0.02)",cursor:!row.isActual&&!editingFk?"pointer":undefined}}>
-                        <td style={{padding:"12px 10px",fontWeight:500,color:text,fontSize:13}}>{row.label}</td>
-                        <td style={{padding:"12px 10px"}}>
-                          <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.4px",borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:row.isActual?"rgba(91,123,106,0.1)":"rgba(160,132,92,0.1)",color:row.isActual?sage:amber}}>
-                            {row.isActual?"Réel":"Prévu"}
-                          </span>
-                        </td>
-                        <td style={{padding:"12px 10px",textAlign:"right",color:row.caTTC?ocean:text3,fontWeight:600}}>{row.caTTC?fmt(row.caTTC):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",color:row.frais?basque:text3}}>{row.frais?fmt(row.frais):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",color:row.salaire?text:text3}}>{row.salaire?fmt(row.salaire):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",color:row.chargesPay?basque:text3}}>{row.chargesPay?fmt(row.chargesPay):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",color:row.isCalc?basque:text3,fontStyle:"italic"}}>{row.isCalc?fmt(row.isCalc):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,color:row.tresoMois>0?sage:row.tresoMois<0?basque:text3}}>{row.tresoMois?fmt(row.tresoMois):<span style={{opacity:0.3}}>—</span>}</td>
-                        <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:row.tresoTotale>=0?ocean:basque}}>{fmt(row.tresoTotale)}</td>
-                        <td style={{padding:"12px 10px"}}>
-                          {!row.isActual&&<div style={{width:8,height:8,borderRadius:"50%",background:amber,opacity:0.5}}/>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              Mois <span style={{color:sage,fontWeight:600}}>Réel</span> : données saisies dans Suivi mensuel &nbsp;·&nbsp; Mois <span style={{color:amber,fontWeight:600}}>Prévu</span> : données prévisionnelles &nbsp;·&nbsp; IS = 15% × (CA HT − Frais − Charges − Salaire)
-            </p>
-          </div>
-        )}
         </div>{/* /inner content */}
       </div>{/* /content wrapper */}
 
@@ -1304,10 +1105,9 @@ export default function Home() {
       {(modal==="addSaving"||modal==="editSaving")&&<SavingForm initial={editItem} onSubmit={modal==="editSaving"?editSaving:addSaving} onClose={closeModal} title={modal==="editSaving"?"Modifier l'épargne":"Nouvelle épargne"}/>}
 
       {/* ── Pro modals ── */}
-      {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year}/>}
+      {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year} caMonths={proForecast.filter((f:any)=>(f.ca_declare||0)>0).map((f:any)=>{const p=f.month_key.split('-');return {key:f.month_key,label:`${MONTHS_FR[parseInt(p[1])-1]} ${p[0]}`}}).sort((a:any,b:any)=>a.key.localeCompare(b.key))}/>}
       {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year} defaultMk={mk}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
-      {modal==="forecast"&&editItem&&<ForecastForm initial={editItem} monthLabel={editItem.monthLabel} onSubmit={(data:any,applyAll:boolean)=>saveForecast(editItem.month_key,data,applyAll)} onClose={closeModal}/>}
     </div>
   );
 }
