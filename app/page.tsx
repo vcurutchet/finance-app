@@ -997,8 +997,8 @@ export default function Home() {
                       T(r=>r.is),
                       T(r=>{const d=r.salaire?(r.chargesCalc-r.chargesPay):0;return d+r.is;}),
                       T(r=>r.tresoMois),
-                      T(r=>r.tresoTotale),
-                      T(r=>{const d=r.salaire?(r.chargesCalc-r.chargesPay):0;return r.tresoTotale-(d+r.is);}),
+                      proAnnual[11]?.tresoTotale||0,
+                      (()=>{const r=proAnnual[11];if(!r)return 0;const d=r.salaire?(r.chargesCalc-r.chargesPay):0;return r.tresoTotale-(d+r.is);})(),
                     ];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
@@ -1086,7 +1086,7 @@ export default function Home() {
                   })}
                   {(()=>{
                     const T=(fn: (r: typeof proTresoAnnual[0])=>number)=>proTresoAnnual.reduce((s,r)=>s+fn(r),0);
-                    const cols=[T(r=>r.caTTC),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.totalDepenses),T(r=>r.isReel),T(r=>r.tresoMois),T(r=>r.tresoTotale)];
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.totalDepenses),T(r=>r.isReel),T(r=>r.tresoMois),proTresoAnnual[11]?.tresoTotale||0];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
                         <td style={{padding:"13px 10px",fontWeight:700,fontSize:13,color:text}}>Total</td>
