@@ -390,7 +390,9 @@ export default function Home() {
       const k=monthKey(year,i);
       const ents=allEntries.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
       const exts=allExits.filter(e=>{
-        const effMk=e.imputation_month_key||e.month_key;
+        // Bilan : placement par mois comptable + filtre exercice
+        // Trésorerie : placement par date de paiement réelle, sans filtre exercice
+        const effMk=filterExercise?(e.imputation_month_key||e.month_key):e.month_key;
         const exOk=!filterExercise||!e.exercise_year||e.exercise_year===year;
         return effMk===k&&exOk;
       });
