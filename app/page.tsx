@@ -10,7 +10,7 @@ const monthKey = (y: number, m: number) => `${y}-${String(m+1).padStart(2,"0")}`
 const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🎭 Loisirs","👕 Vêtements","🎓 Éducation","🐾 Animaux","🔧 Divers"];
 const SAVINGS_TYPES  = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
 const INCOME_TYPES   = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Autre"];
-const EXIT_CATS      = ["TVA","Frais pro","Salaire","PER / Assurance vie","Charges sociales","Divers"];
+const EXIT_CATS      = ["TVA","Impôt société","Frais pro","Salaire","PER / Assurance vie","Charges sociales","Divers"];
 const ENTRY_SUGGESTIONS = [
   ...MONTHS_FR.map(m=>`CA ${m} 2026`),
   "CA Novembre 2025","CA Décembre 2025",
