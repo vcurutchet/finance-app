@@ -925,12 +925,12 @@ export default function Home() {
                       {h:"Mois",         w:72,  note:""},
                       {h:"CA Facturé",   w:100, note:"déclaré"},
                       {h:"TVA calc.",    w:90,  note:"÷ 6"},
-                      {h:"TVA réelle",   w:90,  note:"payée"},
                       {h:"Frais pro",    w:90,  note:""},
                       {h:"Salaire",      w:90,  note:""},
                       {h:"PER / AV",     w:90,  note:""},
                       {h:"Charges pay.", w:96,  note:"payées"},
                       {h:"Charges calc.",w:96,  note:"45%"},
+                      {h:"À conserver",  w:96,  note:"calc − payé"},
                       {h:"Tot. dép.",    w:90,  note:"HT"},
                       {h:"IS calc.",     w:85,  note:"15%"},
                       {h:"IS réel",      w:85,  note:"payé"},
@@ -953,19 +953,19 @@ export default function Home() {
                       <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:isCurrent?"rgba(27,77,110,0.04)":"transparent",opacity:dim?0.35:1}}>
                         <td style={{padding:"12px 10px",fontWeight:isCurrent?700:500,color:isCurrent?ocean:text,fontSize:13}}>{row.label}</td>
                         {[
-                          {v:row.caTTC,         c:row.caTTC?ocean:text3},
-                          {v:row.tvaCalc,       c:text2},
-                          {v:row.tvaReelle,     c:row.tvaReelle?basque:text3},
-                          {v:row.frais,         c:row.frais?basque:text3},
-                          {v:row.salaire,       c:row.salaire?text:text3},
-                          {v:row.per,           c:row.per?amber:text3},
-                          {v:row.chargesPay,    c:row.chargesPay?basque:text3},
-                          {v:row.chargesCalc,   c:text2, italic:true},
-                          {v:row.totalDepenses, c:row.totalDepenses?basque:text3},
-                          {v:row.is,            c:row.is?basque:text3, italic:true},
-                          {v:row.isReel,        c:row.isReel?basque:text3},
-                          {v:row.tresoMois,     c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
-                          {v:row.tresoTotale,   c:row.tresoTotale>0?ocean:basque, bold:true},
+                          {v:row.caTTC,                      c:row.caTTC?ocean:text3},
+                          {v:row.tvaCalc,                    c:text2},
+                          {v:row.frais,                      c:row.frais?basque:text3},
+                          {v:row.salaire,                    c:row.salaire?text:text3},
+                          {v:row.per,                        c:row.per?amber:text3},
+                          {v:row.chargesPay,                 c:row.chargesPay?basque:text3},
+                          {v:row.chargesCalc,                c:text2, italic:true},
+                          {v:row.chargesCalc-row.chargesPay, c:(row.chargesCalc-row.chargesPay)>0?amber:sage, bold:true},
+                          {v:row.totalDepenses,              c:row.totalDepenses?basque:text3},
+                          {v:row.is,                         c:row.is?basque:text3, italic:true},
+                          {v:row.isReel,                     c:row.isReel?basque:text3},
+                          {v:row.tresoMois,                  c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
+                          {v:row.tresoTotale,                c:row.tresoTotale>0?ocean:basque, bold:true},
                         ].map((cell,j)=>(
                           <td key={j} style={{padding:"12px 10px",textAlign:"right",fontWeight:cell.bold?600:400,color:cell.v===0&&!cell.bold?text3:cell.c,fontStyle:cell.italic?"italic":"normal"}}>
                             {cell.v!==0?fmt(cell.v):<span style={{color:text3,opacity:0.3}}>—</span>}
@@ -977,7 +977,8 @@ export default function Home() {
                   {/* Total row */}
                   {(()=>{
                     const T=(fn: (r: typeof proAnnual[0])=>number)=>proAnnual.reduce((s,r)=>s+fn(r),0);
-                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
+                    const totCC=T(r=>r.chargesCalc),totCP=T(r=>r.chargesPay);
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),totCP,totCC,totCC-totCP,T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
                         <td style={{padding:"13px 10px",fontWeight:700,fontSize:13,color:text}}>Total</td>
