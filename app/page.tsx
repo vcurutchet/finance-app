@@ -174,19 +174,27 @@ function EntryForm({initial,onSubmit,onClose,title,defaultYear}: any) {
     </Modal>
   );
 }
-function ExitForm({initial,onSubmit,onClose,title}: any) {
-  const [cat,setCat]=useState(initial?.category||EXIT_CATS[0]);
-  const [label,setLabel]=useState(initial?.label||"");
-  const [amount,setAmt]=useState(initial?.amount||"");
-  const [date,setDate]=useState(initial?.date||new Date().toISOString().slice(0,10));
-  const go=()=>{if(!amount)return;onSubmit({...(initial||{}),category:cat,label,amount:parseFloat(amount),date})};
+function ExitForm({initial,onSubmit,onClose,title,defaultYear}: any) {
+  const [cat,setCat]       = useState(initial?.category||EXIT_CATS[0]);
+  const [label,setLabel]   = useState(initial?.label||"");
+  const [amount,setAmt]    = useState(initial?.amount||"");
+  const [date,setDate]     = useState(initial?.date||new Date().toISOString().slice(0,10));
+  const [exYear,setExYear] = useState(initial?.exercise_year??defaultYear??2026);
+  const go=()=>{if(!amount)return;onSubmit({...(initial||{}),category:cat,label,amount:parseFloat(amount),date,exercise_year:Number(exYear)})};
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <Field label="Catégorie"><select value={cat} onChange={e=>setCat(e.target.value)} style={sel}>{EXIT_CATS.map(c=><option key={c}>{c}</option>)}</select></Field>
-        <Field label="Libellé (optionnel)"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : Acompte TVA T1" style={inp}/></Field>
-        <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
-        <Field label="Date"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
+        <Field label="Libellé (optionnel)"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : Salaire novembre 2025" style={inp}/></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
+          <Field label="Exercice comptable">
+            <select value={exYear} onChange={e=>setExYear(e.target.value)} style={sel}>
+              {[2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="Date de paiement"><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></Field>
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -342,10 +350,11 @@ export default function Home() {
 
   // Pro monthly computed
   const proC=useMemo(()=>{
-    const bycat=(cat: string)=>proExits.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
     const currentEntries=proEntries.filter(e=>!e.exercise_year||e.exercise_year===year);
+    const currentExits=proExits.filter(e=>!e.exercise_year||e.exercise_year===year);
+    const bycat=(cat: string)=>currentExits.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
     const totalEntrees=currentEntries.reduce((s,e)=>s+Number(e.amount),0);
-    const totalSorties=proExits.reduce((s,e)=>s+Number(e.amount),0);
+    const totalSorties=currentExits.reduce((s,e)=>s+Number(e.amount),0);
     const tvaCalc=totalEntrees/6;
     const tvaReelle=bycat("TVA");
     const frais=bycat("Frais pro");
@@ -366,7 +375,7 @@ export default function Home() {
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
       const ents=allEntries.filter(e=>e.month_key===k&&(!e.exercise_year||e.exercise_year===year));
-      const exts=allExits.filter(e=>e.month_key===k);
+      const exts=allExits.filter(e=>e.month_key===k&&(!e.exercise_year||e.exercise_year===year));
       const bycat=(cat: string)=>exts.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
       const caTTC=ents.reduce((s,e)=>s+Number(e.amount),0);
       const tvaCalc=caTTC/6;
@@ -405,8 +414,8 @@ export default function Home() {
   const addEntry    = async(i: any)=>{await supabase.from("pro_entries").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
   const editEntry   = async(i: any)=>{await supabase.from("pro_entries").update({type:i.type,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
-  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date});loadProData();setModal(null)};
-  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
+  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year});loadProData();setModal(null)};
+  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
   const delExit     = async(id: string)=>{await supabase.from("pro_exits").delete().eq("id",id);loadProData()};
   const saveInitBal = async(bal: number)=>{
     await supabase.from("pro_treasury").upsert({user_id:userId,initial_balance:bal,balance:bal,alert_threshold:proTreasury?.alert_threshold||0},{onConflict:"user_id"});
@@ -732,19 +741,25 @@ export default function Home() {
                 </div>
                 {proExits.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucune sortie</p>:
                   <div style={{display:"flex",flexDirection:"column"}}>
-                    {proExits.map((e,i)=>(
-                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proExits.length-1?`1px solid #F2EFE9`:"none"}}>
+                    {proExits.map((e,i)=>{
+                      const offYear=e.exercise_year&&e.exercise_year!==year;
+                      return (
+                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proExits.length-1?`1px solid #F2EFE9`:"none",opacity:offYear?0.55:1}}>
                         <div>
-                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3}}>{e.label||e.category}</div>
+                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6}}>
+                            {e.label||e.category}
+                            {offYear&&<span style={{fontSize:10,fontWeight:600,background:"rgba(160,132,92,0.12)",color:amber,borderRadius:4,padding:"1px 6px"}}>Ex. {e.exercise_year}</span>}
+                          </div>
                           <div style={{fontSize:11,color:text3}}>{e.label?`${e.category} · `:""}{e.date}</div>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{fontSize:13,fontWeight:600,color:basque,marginRight:4}}>{fmt(e.amount)}</span>
+                          <span style={{fontSize:13,fontWeight:600,color:offYear?text3:basque,marginRight:4}}>{fmt(e.amount)}</span>
                           <button onClick={()=>{setEditItem(e);setModal("editExit")}} style={sm()}>✏</button>
                           <button onClick={()=>delExit(e.id)} style={sm(true)}>✕</button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
                       <span style={{fontSize:12,color:text3}}>Total</span>
                       <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(proC.totalSorties)}</span>
@@ -893,7 +908,7 @@ export default function Home() {
 
       {/* ── Pro modals ── */}
       {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year}/>}
-      {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"}/>}
+      {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
     </div>
   );
