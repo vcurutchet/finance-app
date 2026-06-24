@@ -377,7 +377,8 @@ export default function Home() {
     const chargesPay=bycat("Charges sociales");
     const chargesCalc=0.45*(salaire+per);
     const divers=bycat("Divers");
-    const totalDepenses=frais+salaire+per+chargesPay+divers;
+    const isReel=bycat("Impôt société");
+    const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
     const benefice=totalEntrees/1.2-frais-chargesPay;
     return {totalEntrees,totalSorties,netMois:totalEntrees-totalSorties,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is:Math.max(0,benefice*0.15)};
   },[proEntries,proExits]);
@@ -406,7 +407,8 @@ export default function Home() {
       const chargesPay=bycat("Charges sociales");
       const chargesCalc=0.45*(salaire+per);
       const divers=bycat("Divers");
-      const totalDepenses=frais+salaire+per+chargesPay+divers;
+      const isReel=bycat("Impôt société");
+      const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
       const benefice=caTTC/1.2-frais-chargesPay;
       const is=Math.max(0,benefice*0.15);
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
