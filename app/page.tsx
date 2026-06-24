@@ -323,6 +323,8 @@ export default function Home() {
   const [proTab,setProTab]     = useState("pro-mouvements");
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
+  const [editingFk,setEditingFk] = useState<string|null>(null);
+  const [fcDraft,setFcDraft]     = useState<any>({ca_ttc:0,frais:0,salaire:0,per:0,charges_sociales:0,tva:0,is_reel:0,divers:0});
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
 
   // Perso data
@@ -522,6 +524,15 @@ export default function Home() {
   const saveInitBal = async(bal: number)=>{
     await supabase.from("pro_treasury").upsert({user_id:userId,initial_balance:bal,balance:bal,alert_threshold:proTreasury?.alert_threshold||0},{onConflict:"user_id"});
     loadProData();setModal(null);
+  };
+  const startEditFc=(row:any)=>{
+    setEditingFk(row.k);
+    setFcDraft({ca_ttc:row.fc?.ca_ttc??row.caTTC,frais:row.fc?.frais??row.frais,salaire:row.fc?.salaire??row.salaire,per:row.fc?.per??row.per,charges_sociales:row.fc?.charges_sociales??row.chargesPay,tva:row.fc?.tva??row.tvaReelle,is_reel:row.fc?.is_reel??row.isReelVal,divers:row.fc?.divers??row.divers});
+  };
+  const saveInlineFc=async()=>{
+    if(!editingFk||!userId)return;
+    await supabase.from("pro_forecast").upsert({user_id:userId,month_key:editingFk,...fcDraft},{onConflict:"user_id,month_key"});
+    loadProData();setEditingFk(null);
   };
   const saveForecast=async(targetMk:string,data:any,applyAll:boolean)=>{
     const yearKeys=Array.from({length:12},(_,i)=>monthKey(year,i));
@@ -1185,28 +1196,57 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {proProjected.map((row,i)=>(
-                    <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:row.isActual?"transparent":"rgba(160,132,92,0.02)"}}>
-                      <td style={{padding:"12px 10px",fontWeight:500,color:text,fontSize:13}}>{row.label}</td>
-                      <td style={{padding:"12px 10px"}}>
-                        <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.4px",borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:row.isActual?"rgba(91,123,106,0.1)":"rgba(160,132,92,0.1)",color:row.isActual?sage:amber}}>
-                          {row.isActual?"Réel":"Prévu"}
-                        </span>
-                      </td>
-                      <td style={{padding:"12px 10px",textAlign:"right",color:row.caTTC?ocean:text3,fontWeight:600}}>{row.caTTC?fmt(row.caTTC):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",color:row.frais?basque:text3}}>{row.frais?fmt(row.frais):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",color:row.salaire?text:text3}}>{row.salaire?fmt(row.salaire):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",color:row.chargesPay?basque:text3}}>{row.chargesPay?fmt(row.chargesPay):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",color:row.isCalc?basque:text3,fontStyle:"italic"}}>{row.isCalc?fmt(row.isCalc):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,color:row.tresoMois>0?sage:row.tresoMois<0?basque:text3}}>{row.tresoMois?fmt(row.tresoMois):<span style={{opacity:0.3}}>—</span>}</td>
-                      <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:row.tresoTotale>=0?ocean:basque}}>{fmt(row.tresoTotale)}</td>
-                      <td style={{padding:"12px 10px"}}>
-                        {!row.isActual&&(
-                          <button onClick={()=>{setEditItem({month_key:row.k,monthLabel:MONTHS_FR[i],...(row.fc||{})});setModal("forecast")}} style={{...iconBtn(),width:28,height:28,fontSize:12}}>✏</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {proProjected.map((row,i)=>{
+                    const isEditing=!row.isActual&&editingFk===row.k;
+                    const fcInp=(w:number):React.CSSProperties=>({background:"rgba(27,77,110,0.05)",border:`1.5px solid ${ocean}`,borderRadius:6,padding:"5px 7px",color:text,fontSize:12,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"right",width:w,minWidth:w});
+                    if(isEditing){
+                      const n=(v:any)=>parseFloat(v)||0;
+                      const liveBenef=n(fcDraft.ca_ttc)/1.2-n(fcDraft.frais)-n(fcDraft.charges_sociales)-n(fcDraft.salaire);
+                      const liveIS=Math.max(0,liveBenef*0.15);
+                      const liveSorties=n(fcDraft.frais)+n(fcDraft.salaire)+n(fcDraft.per)+n(fcDraft.charges_sociales)+n(fcDraft.tva)+n(fcDraft.is_reel)+n(fcDraft.divers);
+                      const liveTreso=n(fcDraft.ca_ttc)-liveSorties;
+                      const upd=(k:string,v:string)=>setFcDraft((d:any)=>({...d,[k]:parseFloat(v)||0}));
+                      return (
+                        <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:"rgba(27,77,110,0.04)"}}>
+                          <td style={{padding:"8px 10px",fontWeight:700,color:ocean,fontSize:13}}>{row.label}</td>
+                          <td style={{padding:"8px 10px"}}><span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:"rgba(160,132,92,0.1)",color:amber}}>Prévu</span></td>
+                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.ca_ttc||""} onChange={e=>upd("ca_ttc",e.target.value)} placeholder="0" style={fcInp(90)} autoFocus/></td>
+                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.frais||""} onChange={e=>upd("frais",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
+                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.salaire||""} onChange={e=>upd("salaire",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
+                          <td style={{padding:"6px 6px"}}><input type="number" value={fcDraft.charges_sociales||""} onChange={e=>upd("charges_sociales",e.target.value)} placeholder="0" style={fcInp(82)}/></td>
+                          <td style={{padding:"8px 10px",textAlign:"right",color:liveIS?basque:text3,fontStyle:"italic",fontSize:12}}>{liveIS?fmt(liveIS):<span style={{opacity:0.3}}>—</span>}</td>
+                          <td style={{padding:"8px 10px",textAlign:"right",fontWeight:600,fontSize:12,color:liveTreso>0?sage:liveTreso<0?basque:text3}}>{liveTreso?fmt(liveTreso):<span style={{opacity:0.3}}>—</span>}</td>
+                          <td style={{padding:"8px 10px",textAlign:"right",fontSize:11,color:text3}}>après enreg.</td>
+                          <td style={{padding:"6px 8px"}}>
+                            <div style={{display:"flex",gap:4}}>
+                              <button onClick={saveInlineFc} style={{background:ocean,border:"none",borderRadius:6,color:"#fff",width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
+                              <button onClick={()=>setEditingFk(null)} style={{...iconBtn(true),width:28,height:28,fontSize:11}}>✕</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={row.k} onClick={!row.isActual&&!editingFk?()=>startEditFc(row):undefined} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:row.isActual?"transparent":"rgba(160,132,92,0.02)",cursor:!row.isActual&&!editingFk?"pointer":undefined}}>
+                        <td style={{padding:"12px 10px",fontWeight:500,color:text,fontSize:13}}>{row.label}</td>
+                        <td style={{padding:"12px 10px"}}>
+                          <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.4px",borderRadius:4,padding:"3px 8px",textTransform:"uppercase",background:row.isActual?"rgba(91,123,106,0.1)":"rgba(160,132,92,0.1)",color:row.isActual?sage:amber}}>
+                            {row.isActual?"Réel":"Prévu"}
+                          </span>
+                        </td>
+                        <td style={{padding:"12px 10px",textAlign:"right",color:row.caTTC?ocean:text3,fontWeight:600}}>{row.caTTC?fmt(row.caTTC):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",color:row.frais?basque:text3}}>{row.frais?fmt(row.frais):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",color:row.salaire?text:text3}}>{row.salaire?fmt(row.salaire):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",color:row.chargesPay?basque:text3}}>{row.chargesPay?fmt(row.chargesPay):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",color:row.isCalc?basque:text3,fontStyle:"italic"}}>{row.isCalc?fmt(row.isCalc):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,color:row.tresoMois>0?sage:row.tresoMois<0?basque:text3}}>{row.tresoMois?fmt(row.tresoMois):<span style={{opacity:0.3}}>—</span>}</td>
+                        <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:row.tresoTotale>=0?ocean:basque}}>{fmt(row.tresoTotale)}</td>
+                        <td style={{padding:"12px 10px"}}>
+                          {!row.isActual&&<div style={{width:8,height:8,borderRadius:"50%",background:amber,opacity:0.5}}/>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
