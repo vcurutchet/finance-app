@@ -414,7 +414,7 @@ export default function Home() {
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC-totalSorties;
       cum+=tresoMois;
-      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,tresoMois,tresoTotale:cum,hasData:ents.length>0||exts.length>0};
+      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,isReel,tresoMois,tresoTotale:cum,hasData:ents.length>0||exts.length>0};
     });
   };
   // Bilan annuel : filtré par exercice comptable
@@ -863,6 +863,7 @@ export default function Home() {
                       {h:"Charges calc.",w:78, note:"45%"},
                       {h:"Tot. dép.",    w:72, note:"HT"},
                       {h:"IS calc.",     w:65, note:"15%"},
+                      {h:"IS réel",      w:65, note:"payé"},
                       {h:"Tréso mois",   w:80, note:""},
                       {h:"Tréso tot.",   w:80, note:"cumulé"},
                     ].map((h,i)=>(
@@ -892,6 +893,7 @@ export default function Home() {
                           {v:row.chargesCalc,   c:text2, italic:true},
                           {v:row.totalDepenses, c:row.totalDepenses?basque:text3},
                           {v:row.is,            c:row.is?basque:text3, italic:true},
+                          {v:row.isReel,        c:row.isReel?basque:text3},
                           {v:row.tresoMois,     c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
                           {v:row.tresoTotale,   c:row.tresoTotale>0?ocean:basque, bold:true},
                         ].map((cell,j)=>(
@@ -905,7 +907,7 @@ export default function Home() {
                   {/* Total row */}
                   {(()=>{
                     const T=(fn: (r: typeof proAnnual[0])=>number)=>proAnnual.reduce((s,r)=>s+fn(r),0);
-                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.tresoMois)];
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
                         <td style={{padding:"11px 8px",fontWeight:700,fontSize:11,color:text}}>Total</td>
@@ -958,6 +960,7 @@ export default function Home() {
                       {h:"Charges calc.",w:78, note:"45%"},
                       {h:"Tot. dép.",    w:72, note:"HT"},
                       {h:"IS calc.",     w:65, note:"15%"},
+                      {h:"IS réel",      w:65, note:"payé"},
                       {h:"Tréso mois",   w:80, note:""},
                       {h:"Tréso tot.",   w:80, note:"cumulé"},
                     ].map((h,i)=>(
@@ -987,6 +990,7 @@ export default function Home() {
                           {v:row.chargesCalc,   c:text2, italic:true},
                           {v:row.totalDepenses, c:row.totalDepenses?basque:text3},
                           {v:row.is,            c:row.is?basque:text3, italic:true},
+                          {v:row.isReel,        c:row.isReel?basque:text3},
                           {v:row.tresoMois,     c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
                           {v:row.tresoTotale,   c:row.tresoTotale>0?ocean:basque, bold:true},
                         ].map((cell,j)=>(
@@ -999,7 +1003,7 @@ export default function Home() {
                   })}
                   {(()=>{
                     const T=(fn: (r: typeof proTresoAnnual[0])=>number)=>proTresoAnnual.reduce((s,r)=>s+fn(r),0);
-                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.tresoMois)];
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
                         <td style={{padding:"11px 8px",fontWeight:700,fontSize:11,color:text}}>Total</td>
