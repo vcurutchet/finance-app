@@ -960,7 +960,7 @@ export default function Home() {
                           {v:row.per,                        c:row.per?amber:text3},
                           {v:row.chargesPay,                 c:row.chargesPay?basque:text3},
                           {v:row.chargesCalc,                c:text2, italic:true},
-                          {v:row.chargesCalc-row.chargesPay, c:(row.chargesCalc-row.chargesPay)>0?amber:sage, bold:true},
+                          {v:row.salaire?(row.chargesCalc-row.chargesPay):0, c:(row.chargesCalc-row.chargesPay)>0?amber:sage, bold:true},
                           {v:row.totalDepenses,              c:row.totalDepenses?basque:text3},
                           {v:row.is,                         c:row.is?basque:text3, italic:true},
                           {v:row.isReel,                     c:row.isReel?basque:text3},
@@ -977,8 +977,8 @@ export default function Home() {
                   {/* Total row */}
                   {(()=>{
                     const T=(fn: (r: typeof proAnnual[0])=>number)=>proAnnual.reduce((s,r)=>s+fn(r),0);
-                    const totCC=T(r=>r.chargesCalc),totCP=T(r=>r.chargesPay);
-                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),totCP,totCC,totCC-totCP,T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
+                    const totCC=T(r=>r.chargesCalc),totCP=T(r=>r.chargesPay),totSal=T(r=>r.salaire);
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.frais),totSal,T(r=>r.per),totCP,totCC,totSal?(totCC-totCP):0,T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.isReel),T(r=>r.tresoMois)];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
                         <td style={{padding:"13px 10px",fontWeight:700,fontSize:13,color:text}}>Total</td>
