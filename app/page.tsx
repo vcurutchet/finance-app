@@ -268,7 +268,7 @@ export default function Home() {
   const [year,setYear]         = useState(new Date().getFullYear());
   const [month,setMonth]       = useState(new Date().getMonth());
   const [tab,setTab]           = useState("dashboard");
-  const [proTab,setProTab]     = useState("pro-cashflow");
+  const [proTab,setProTab]     = useState("pro-mouvements");
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
@@ -368,14 +368,14 @@ export default function Home() {
     return {totalEntrees,totalSorties,netMois:totalEntrees-totalSorties,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is:Math.max(0,benefice*0.15)};
   },[proEntries,proExits]);
 
-  // Pro annual table (all 12 months of current year)
-  const proAnnual=useMemo(()=>{
+  // Helper pour construire les lignes annuelles
+  const buildAnnual=(filterExercise: boolean)=>{
     const initBal=proTreasury?.initial_balance||0;
     let cum=initBal;
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
-      const ents=allEntries.filter(e=>e.month_key===k&&(!e.exercise_year||e.exercise_year===year));
-      const exts=allExits.filter(e=>e.month_key===k&&(!e.exercise_year||e.exercise_year===year));
+      const ents=allEntries.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
+      const exts=allExits.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
       const bycat=(cat: string)=>exts.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
       const caTTC=ents.reduce((s,e)=>s+Number(e.amount),0);
       const tvaCalc=caTTC/6;
@@ -394,7 +394,11 @@ export default function Home() {
       cum+=tresoMois;
       return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,tresoMois,tresoTotale:cum,hasData:ents.length>0||exts.length>0};
     });
-  },[allEntries,allExits,proTreasury,year]);
+  };
+  // Bilan annuel : filtré par exercice comptable
+  const proAnnual=useMemo(()=>buildAnnual(true),[allEntries,allExits,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Trésorerie : tous les mouvements réels (sans filtre exercice)
+  const proTresoAnnual=useMemo(()=>buildAnnual(false),[allEntries,allExits,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Perso CRUD ───
   const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category});loadData();setModal(null)};
@@ -437,8 +441,9 @@ export default function Home() {
     {id:"savings",   label:"Épargne"},
   ];
   const proTabs=[
-    {id:"pro-cashflow", label:"Trésorerie"},
-    {id:"pro-annual",   label:"Bilan annuel"},
+    {id:"pro-mouvements", label:"Mouvements"},
+    {id:"pro-annual",     label:"Bilan annuel"},
+    {id:"pro-tresorerie", label:"Trésorerie"},
   ];
   const activeTabs   = appMode==="perso"?persoTabs:proTabs;
   const activeTab    = appMode==="perso"?tab:proTab;
@@ -678,8 +683,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* ══ PRO — Trésorerie mensuelle ══ */}
-        {appMode==="pro"&&proTab==="pro-cashflow"&&(
+        {/* ══ PRO — Mouvements ══ */}
+        {appMode==="pro"&&proTab==="pro-mouvements"&&(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
 
             {/* Solde initial */}
@@ -895,6 +900,100 @@ export default function Home() {
             </div>
             <p style={{margin:0,fontSize:11,color:text3,textAlign:"center",lineHeight:1.8}}>
               TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Charges payées)
+            </p>
+          </div>
+        )}
+
+        {/* ══ PRO — Trésorerie (flux réels) ══ */}
+        {appMode==="pro"&&proTab==="pro-tresorerie"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <SectionHead title={`Trésorerie ${year}`} sub="Tous les mouvements — sans filtre exercice comptable"/>
+            <div style={{...card,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
+                <div style={{fontSize:22,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
+                  {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
+                </div>
+              </div>
+              <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
+                {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
+              </button>
+            </div>
+            <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:980}}>
+                <thead>
+                  <tr style={{background:"#F7F5F0"}}>
+                    {[
+                      {h:"Mois",         w:60, note:""},
+                      {h:"CA TTC",       w:80, note:""},
+                      {h:"TVA calc.",    w:72, note:"÷ 6"},
+                      {h:"TVA réelle",   w:72, note:"payée"},
+                      {h:"Frais pro",    w:72, note:""},
+                      {h:"Salaire",      w:72, note:""},
+                      {h:"PER / AV",     w:72, note:""},
+                      {h:"Charges pay.", w:78, note:"payées"},
+                      {h:"Charges calc.",w:78, note:"45%"},
+                      {h:"Tot. dép.",    w:72, note:"HT"},
+                      {h:"IS calc.",     w:65, note:"15%"},
+                      {h:"Tréso mois",   w:80, note:""},
+                      {h:"Tréso tot.",   w:80, note:"cumulé"},
+                    ].map((h,i)=>(
+                      <th key={i} style={{padding:"10px 8px",textAlign:i===0?"left":"right",fontWeight:600,fontSize:10,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:h.w,minWidth:h.w,borderBottom:`1px solid ${border}`}}>
+                        {h.h}
+                        {h.note&&<span style={{display:"block",fontSize:9,fontWeight:400,color:text3,textTransform:"none",letterSpacing:0}}>{h.note}</span>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {proTresoAnnual.map((row,i)=>{
+                    const isCurrent=i===month;
+                    const isPast=i<month;
+                    const dim=!row.hasData&&!isPast&&!isCurrent;
+                    return (
+                      <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:isCurrent?"rgba(27,77,110,0.04)":"transparent",opacity:dim?0.35:1}}>
+                        <td style={{padding:"10px 8px",fontWeight:isCurrent?700:500,color:isCurrent?ocean:text,fontSize:12}}>{row.label}</td>
+                        {[
+                          {v:row.caTTC,         c:row.caTTC?ocean:text3},
+                          {v:row.tvaCalc,       c:text2},
+                          {v:row.tvaReelle,     c:row.tvaReelle?basque:text3},
+                          {v:row.frais,         c:row.frais?basque:text3},
+                          {v:row.salaire,       c:row.salaire?text:text3},
+                          {v:row.per,           c:row.per?amber:text3},
+                          {v:row.chargesPay,    c:row.chargesPay?basque:text3},
+                          {v:row.chargesCalc,   c:text2, italic:true},
+                          {v:row.totalDepenses, c:row.totalDepenses?basque:text3},
+                          {v:row.is,            c:row.is?basque:text3, italic:true},
+                          {v:row.tresoMois,     c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
+                          {v:row.tresoTotale,   c:row.tresoTotale>0?ocean:basque, bold:true},
+                        ].map((cell,j)=>(
+                          <td key={j} style={{padding:"10px 8px",textAlign:"right",fontWeight:cell.bold?600:400,color:cell.v===0&&!cell.bold?text3:cell.c,fontStyle:cell.italic?"italic":"normal"}}>
+                            {cell.v!==0?fmt(cell.v):<span style={{color:text3,opacity:0.3}}>—</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {(()=>{
+                    const T=(fn: (r: typeof proTresoAnnual[0])=>number)=>proTresoAnnual.reduce((s,r)=>s+fn(r),0);
+                    const cols=[T(r=>r.caTTC),T(r=>r.tvaCalc),T(r=>r.tvaReelle),T(r=>r.frais),T(r=>r.salaire),T(r=>r.per),T(r=>r.chargesPay),T(r=>r.chargesCalc),T(r=>r.totalDepenses),T(r=>r.is),T(r=>r.tresoMois)];
+                    return (
+                      <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
+                        <td style={{padding:"11px 8px",fontWeight:700,fontSize:11,color:text}}>Total</td>
+                        {cols.map((v,j)=>(
+                          <td key={j} style={{padding:"11px 8px",textAlign:"right",fontWeight:600,fontSize:11,color:v?ocean:text3}}>{v?fmt(v):"—"}</td>
+                        ))}
+                        <td style={{padding:"11px 8px",textAlign:"right",fontWeight:700,fontSize:11,color:proTresoAnnual[11]?.tresoTotale>0?ocean:basque}}>
+                          {proTresoAnnual[11]?.tresoTotale?fmt(proTresoAnnual[11].tresoTotale):"—"}
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <p style={{margin:0,fontSize:11,color:text3,textAlign:"center",lineHeight:1.8}}>
+              Inclut tous les mouvements quelle que soit leur imputation comptable &nbsp;·&nbsp; TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Charges payées)
             </p>
           </div>
         )}
