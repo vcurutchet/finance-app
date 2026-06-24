@@ -626,7 +626,6 @@ export default function Home() {
             <div style={{padding:"0 20px 14px",fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase"}}>Curutchet Consulting</div>
             {[
               {id:"pro-mouvements",  label:"Suivi mensuel"},
-              {id:"pro-frais",       label:"Frais"},
               {id:"pro-annual",      label:"Bilan annuel"},
               {id:"pro-tresorerie",  label:"Trésorerie"},
             ].map(item=>(
@@ -954,6 +953,47 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Frais */}
+            {(()=>{
+              const fraisMois=proFrais.filter((f:any)=>f.month_key===mk).sort((a:any,b:any)=>a.date.localeCompare(b.date));
+              const totalFraisMois=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
+              return (
+                <div style={{...card,padding:"22px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                    <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Frais — {MONTHS_FR[month]} {year}</h3>
+                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"6px 14px",fontSize:12}}>+ Ajouter</button>
+                  </div>
+                  {fraisMois.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
+                    <div style={{display:"flex",flexDirection:"column"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",padding:"0 4px 8px",borderBottom:`1px solid #F2EFE9`}}>
+                        {["Date","Type · Libellé","Montant TTC",""].map((h,i)=>(
+                          <span key={i} style={{fontSize:11,color:text2,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase",textAlign:i===2?"right":"left"}}>{h}</span>
+                        ))}
+                      </div>
+                      {fraisMois.map((f:any,i:number)=>(
+                        <div key={f.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:i<fraisMois.length-1?`1px solid #F2EFE9`:"none"}}>
+                          <span style={{fontSize:13,color:text3}}>{f.date}</span>
+                          <div style={{minWidth:0}}>
+                            <span style={{fontSize:13,fontWeight:500,color:text}}>{f.type}</span>
+                            {f.label&&<span style={{fontSize:12,color:text3}}> · {f.label}</span>}
+                          </div>
+                          <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(f.amount_ttc)}</span>
+                          <div style={{display:"flex",gap:4}}>
+                            <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
+                            <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
+                        <span style={{fontSize:12,color:text3}}>Total TTC</span>
+                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalFraisMois)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Récap mensuel */}
             <div style={{...card,padding:"26px"}}>
               <h3 style={{margin:"0 0 18px",fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Récapitulatif — {MONTHS_FR[month]} {year}</h3>
@@ -988,75 +1028,6 @@ export default function Home() {
             )}
           </div>
         )}
-
-        {/* ══ PRO — Frais ══ */}
-        {appMode==="pro"&&proTab==="pro-frais"&&(()=>{
-          const fraisMois=proFrais.filter((f:any)=>f.month_key===mk).sort((a:any,b:any)=>a.date.localeCompare(b.date));
-          const totalFraisMois=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
-          const recapFrais=Object.entries(fraisMois.reduce((acc:{[k:string]:number},f:any)=>{acc[f.type]=(acc[f.type]||0)+Number(f.amount_ttc);return acc;},{})).map(([type,total])=>({type,total})).sort((a:any,b:any)=>b.total-a.total);
-          const allFraisTypes=[...new Set([...FRAIS_TYPES,...proFrais.map((f:any)=>f.type).filter(Boolean)])];
-          return (
-            <div style={{display:"flex",flexDirection:"column",gap:20}}>
-              {/* Sélecteur de mois */}
-              <div style={{display:"flex",alignItems:"center",gap:20,paddingBottom:8,borderBottom:`1px solid ${border}`}}>
-                <button onClick={prevMonth} disabled={year===2026&&month===0} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:year===2026&&month===0?"default":"pointer",padding:"4px 8px",lineHeight:1,opacity:year===2026&&month===0?0.2:1}}>‹</button>
-                <div style={{fontFamily:serif,fontSize:24,fontWeight:400,color:text,lineHeight:1}}>{MONTHS_FR[month]} {year}</div>
-                <button onClick={nextMonth} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>›</button>
-              </div>
-              {/* 2-column grid */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                {/* Frais list */}
-                <div style={{...card,padding:"22px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                    <h3 style={{margin:0,fontSize:15,fontFamily:serif,fontWeight:400,color:text}}>Frais — {MONTHS_FR[month]} {year}</h3>
-                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"6px 14px",fontSize:12}}>+ Ajouter</button>
-                  </div>
-                  {fraisMois.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
-                    <div style={{display:"flex",flexDirection:"column"}}>
-                      {fraisMois.map((f:any,i:number)=>(
-                        <div key={f.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<fraisMois.length-1?`1px solid #F2EFE9`:"none"}}>
-                          <div style={{flex:1,minWidth:0,marginRight:8}}>
-                            <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3}}>{f.type}</div>
-                            <div style={{fontSize:11,color:text3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.date}{f.label?` · ${f.label}`:""}</div>
-                          </div>
-                          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                            <span style={{fontSize:13,fontWeight:600,color:basque,marginRight:4}}>{fmt(f.amount_ttc)}</span>
-                            <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
-                            <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
-                          </div>
-                        </div>
-                      ))}
-                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                        <span style={{fontSize:12,color:text3}}>Total TTC</span>
-                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalFraisMois)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {/* Récapitulatif */}
-                <div style={{...card,padding:"22px"}}>
-                  <h3 style={{margin:"0 0 14px",fontSize:15,fontFamily:serif,fontWeight:400,color:text}}>Récapitulatif</h3>
-                  {recapFrais.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
-                    <div style={{display:"flex",flexDirection:"column"}}>
-                      {recapFrais.map(({type,total}:any,i:number)=>(
-                        <div key={type} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<recapFrais.length-1?`1px solid #F2EFE9`:"none"}}>
-                          <span style={{fontSize:13,color:text}}>{type}</span>
-                          <span style={{fontSize:13,fontWeight:600,color:text2}}>{fmt(total)}</span>
-                        </div>
-                      ))}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                        <span style={{fontSize:13,color:text3,fontWeight:500}}>Total</span>
-                        <span style={{fontSize:16,fontWeight:400,color:basque,fontFamily:serif}}>{fmt(totalFraisMois)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* FraisForm modal via state — stored for modal trigger */}
-              {(modal==="addFrais"||modal==="editFrais")&&<FraisForm initial={editItem} onSubmit={modal==="editFrais"?editFrais:addFrais} onClose={closeModal} title={modal==="editFrais"?"Modifier le frais":"Nouveau frais"} fraisTypes={allFraisTypes}/>}
-            </div>
-          );
-        })()}
 
         {/* ══ PRO — Bilan annuel ══ */}
         {appMode==="pro"&&proTab==="pro-annual"&&(
@@ -1263,6 +1234,7 @@ export default function Home() {
       {(modal==="addEntry"||modal==="editEntry")&&<EntryForm initial={editItem} onSubmit={modal==="editEntry"?editEntry:addEntry} onClose={closeModal} title={modal==="editEntry"?"Modifier l'entrée":"Nouvelle entrée"} defaultYear={year} caMonths={proForecast.filter((f:any)=>(f.ca_declare||0)>0).map((f:any)=>{const p=f.month_key.split('-');return {key:f.month_key,label:`${MONTHS_FR[parseInt(p[1])-1]} ${p[0]}`}}).sort((a:any,b:any)=>a.key.localeCompare(b.key))}/>}
       {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year} defaultMk={mk}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
+      {(modal==="addFrais"||modal==="editFrais")&&<FraisForm initial={editItem} onSubmit={modal==="editFrais"?editFrais:addFrais} onClose={closeModal} title={modal==="editFrais"?"Modifier le frais":"Nouveau frais"} fraisTypes={[...new Set([...FRAIS_TYPES,...proFrais.map((f:any)=>f.type).filter(Boolean)])]}/>}
     </div>
   );
 }
