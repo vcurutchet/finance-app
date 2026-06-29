@@ -22,10 +22,33 @@ const ocean="#1B4D6E", sage="#2A7A5A", basque="#C0622A", amber="#8F6018";
 const text="#111827", text2="#4B5563", text3="#9CA3AF", border="#E5E7EB";
 const serif="'DM Serif Display',serif";
 
-const inp: React.CSSProperties = {background:"#F9FAFB",border:`1.5px solid ${border}`,borderRadius:10,padding:"12px 16px",color:text,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif",width:"100%",transition:"border-color 0.15s"};
+const FRAIS_COLORS: Record<string,{bg:string,dot:string}> = {
+  "Repas client":   {bg:"rgba(234,88,12,0.1)",  dot:"#EA580C"},
+  "Transport":      {bg:"rgba(37,99,235,0.1)",  dot:"#2563EB"},
+  "Hébergement":    {bg:"rgba(139,92,246,0.1)", dot:"#8B5CF6"},
+  "Matériel":       {bg:"rgba(20,184,166,0.1)", dot:"#0D9488"},
+  "Logiciel":       {bg:"rgba(99,102,241,0.1)", dot:"#6366F1"},
+  "Formation":      {bg:"rgba(22,163,74,0.1)",  dot:"#16A34A"},
+  "Téléphone":      {bg:"rgba(14,165,233,0.1)", dot:"#0EA5E9"},
+  "Internet":       {bg:"rgba(14,165,233,0.1)", dot:"#0EA5E9"},
+  "Fournitures":    {bg:"rgba(107,114,128,0.1)",dot:"#6B7280"},
+  "Sous-traitance": {bg:"rgba(245,158,11,0.1)", dot:"#D97706"},
+};
+const fraisColor=(t:string)=>FRAIS_COLORS[t]||{bg:"rgba(107,114,128,0.08)",dot:"#9CA3AF"};
+function TypePill({type}: {type:string}) {
+  const c=fraisColor(type);
+  return (
+    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,color:c.dot,borderRadius:6,padding:"3px 9px",fontSize:11,fontWeight:700,whiteSpace:"nowrap",letterSpacing:"0.1px"}}>
+      <span style={{width:6,height:6,borderRadius:"50%",background:c.dot,flexShrink:0,display:"inline-block"}}/>
+      {type}
+    </span>
+  );
+}
+
+const inp: React.CSSProperties = {background:"#F9FAFB",border:`1.5px solid ${border}`,borderRadius:10,padding:"12px 16px",color:text,fontSize:15,outline:"none",fontFamily:"'Inter',sans-serif",width:"100%",transition:"border-color 0.15s"};
 const sel: React.CSSProperties = {...inp,appearance:"none" as const,backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 16px center"};
-const btnP: React.CSSProperties = {background:ocean,color:"#fff",border:"none",borderRadius:50,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.1px",whiteSpace:"nowrap"};
-const btnG: React.CSSProperties = {background:"transparent",border:`1.5px solid ${border}`,borderRadius:50,padding:"10px 22px",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
+const btnP: React.CSSProperties = {background:ocean,color:"#fff",border:"none",borderRadius:50,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",letterSpacing:"0.1px",whiteSpace:"nowrap"};
+const btnG: React.CSSProperties = {background:"transparent",border:`1.5px solid ${border}`,borderRadius:50,padding:"10px 22px",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"};
 const card: React.CSSProperties = {background:"#FFF",border:`1px solid ${border}`,borderRadius:16,boxShadow:"0 1px 2px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.05)"};
 const iconBtn = (danger=false): React.CSSProperties => ({background:danger?"rgba(192,98,42,0.08)":"rgba(75,85,99,0.07)",border:"none",borderRadius:8,width:34,height:34,color:danger?basque:text2,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0});
 
@@ -323,7 +346,7 @@ function LoginScreen({onLogin}: any) {
             <button onClick={submit} disabled={busy} style={{...btnP,padding:"13px",fontSize:15,width:"100%",marginTop:4,opacity:busy?0.6:1,borderRadius:12}}>{busy?"...":(loginMode==="login"?"Se connecter":"Créer le compte")}</button>
           </div>
         </div>
-        <button onClick={()=>{setLM(loginMode==="login"?"register":"login");setErr("");setMsg("")}} style={{background:"none",border:"none",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"16px 0",width:"100%",textAlign:"center"}}>
+        <button onClick={()=>{setLM(loginMode==="login"?"register":"login");setErr("");setMsg("")}} style={{background:"none",border:"none",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",padding:"16px 0",width:"100%",textAlign:"center"}}>
           {loginMode==="login"?"Pas encore de compte ? Inscrivez-vous →":"Déjà un compte ? Connectez-vous"}
         </button>
       </div>
@@ -657,7 +680,7 @@ export default function Home() {
             ))}
           </div>
           <span style={{fontSize:12,color:text3,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{session.user.email}</span>
-          <button onClick={async()=>{await supabase.auth.signOut();setSession(null)}} style={{background:"none",border:"none",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0}}>Déconnexion</button>
+          <button onClick={async()=>{await supabase.auth.signOut();setSession(null)}} style={{background:"none",border:"none",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",padding:0}}>Déconnexion</button>
         </div>
       </header>
 
@@ -723,7 +746,7 @@ export default function Home() {
             <div style={{...card,padding:"28px 26px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:20}}>
                 <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Revenus de {MONTHS_FR[month]}</h3>
-                <button onClick={()=>setTab("income")} style={{background:"none",border:"none",color:ocean,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,padding:0}}>Gérer les revenus →</button>
+                <button onClick={()=>setTab("income")} style={{background:"none",border:"none",color:ocean,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,padding:0}}>Gérer les revenus →</button>
               </div>
               {incomes.length===0?<p style={{margin:0,fontSize:14,color:text3}}>Aucun revenu enregistré ce mois-ci.</p>:
                 <div style={{display:"flex",flexDirection:"column",gap:0}}>
@@ -1056,88 +1079,89 @@ export default function Home() {
               const fraisMois=proFrais.filter((f:any)=>f.month_key===mk).sort((a:any,b:any)=>a.date.localeCompare(b.date));
               const activeRecurrings=proRecurringFrais.filter(r=>!proRecurringFraisSkips.some(s=>s.recurring_frais_id===r.id&&s.month_key===mk));
               const skippedRecurrings=proRecurringFrais.filter(r=>proRecurringFraisSkips.some(s=>s.recurring_frais_id===r.id&&s.month_key===mk));
-              const totalOneTime=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
-              const totalRecurring=activeRecurrings.reduce((s:number,r:any)=>s+Number(r.amount_ttc),0);
-              const totalFrais=totalOneTime+totalRecurring;
-              const hasAny=fraisMois.length>0||activeRecurrings.length>0||skippedRecurrings.length>0;
-              const chip=(label:string,bg:string,col:string)=>(
-                <span style={{fontSize:10,fontWeight:700,background:bg,color:col,borderRadius:5,padding:"2px 7px",letterSpacing:"0.4px",textTransform:"uppercase"}}>{label}</span>
-              );
+              const totalFrais=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0)+activeRecurrings.reduce((s:number,r:any)=>s+Number(r.amount_ttc),0);
+              const hasAny=fraisMois.length>0||activeRecurrings.length>0;
+              const thS: React.CSSProperties={padding:"10px 14px",textAlign:"left",fontSize:11,color:text2,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",borderBottom:`2px solid ${border}`,whiteSpace:"nowrap",background:"#F8FAFC"};
+              const tdS: React.CSSProperties={padding:"13px 14px",verticalAlign:"middle",borderBottom:`1px solid ${border}`};
               return (
-                <div style={{...card,padding:"22px 24px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <div style={{...card,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 16px"}}>
                     <div>
-                      <h3 style={{margin:0,fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Frais professionnels</h3>
-                      {hasAny&&<div style={{fontSize:12,color:text3,marginTop:2}}>{fmt(totalFrais)} TTC ce mois</div>}
+                      <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Frais professionnels</h3>
+                      <div style={{fontSize:13,color:text3,marginTop:3}}>{hasAny?`${fmt(totalFrais)} TTC ce mois`:"Aucun frais ce mois"}</div>
                     </div>
-                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"7px 16px",fontSize:12}}>+ Ajouter</button>
+                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"8px 18px",fontSize:13}}>+ Ajouter</button>
                   </div>
-                  {!hasAny?<p style={{margin:0,fontSize:14,color:text3}}>Aucun frais ce mois</p>:(
-                    <div style={{display:"flex",flexDirection:"column"}}>
-                      {activeRecurrings.length>0&&(
-                        <>
-                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",paddingBottom:8,marginBottom:2}}>Récurrents</div>
+                  {hasAny&&(
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse"}}>
+                        <thead>
+                          <tr>
+                            <th style={{...thS,width:120}}>Date</th>
+                            <th style={thS}>Type</th>
+                            <th style={thS}>Libellé</th>
+                            <th style={{...thS,textAlign:"right"}}>Montant TTC</th>
+                            <th style={{...thS,width:72}}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {activeRecurrings.map((r:any)=>{
-                            const dateStr=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:null;
+                            const ds=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:"Mensuel";
                             return (
-                            <div key={r.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${border}`}}>
-                              <div style={{flex:1,minWidth:0,marginRight:12,display:"flex",alignItems:"center",gap:12}}>
-                                {chip("↻","rgba(42,122,90,0.08)",sage)}
-                                <div>
-                                  <span style={{fontSize:14,fontWeight:500,color:text}}>{r.type}</span>
-                                  {r.label&&<span style={{fontSize:13,color:text3}}> · {r.label}</span>}
-                                  {dateStr&&<div style={{fontSize:12,color:text3,marginTop:1}}>{dateStr}</div>}
-                                </div>
-                              </div>
-                              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                                <span style={{fontSize:15,fontWeight:700,color:basque}}>{fmt(r.amount_ttc)}</span>
+                            <tr key={r.id} className="row" style={{background:"rgba(42,122,90,0.025)"}}>
+                              <td style={tdS}>
+                                <span style={{color:sage,fontWeight:700,fontSize:11,marginRight:4}}>↻</span>
+                                <span style={{fontSize:12,color:text2,fontWeight:500}}>{ds}</span>
+                              </td>
+                              <td style={tdS}><TypePill type={r.type}/></td>
+                              <td style={{...tdS,fontSize:13,color:r.label?text:text3}}>{r.label||"—"}</td>
+                              <td style={{...tdS,textAlign:"right",fontWeight:700,fontSize:15,color:ocean,letterSpacing:"-0.2px"}}>{fmt(r.amount_ttc)}</td>
+                              <td style={{...tdS,textAlign:"right"}}>
                                 <button onClick={()=>skipRecurringFrais(r.id)} style={{...sm(),background:"rgba(143,96,24,0.08)",color:amber}} title="Désactiver ce mois">⊘</button>
-                              </div>
-                            </div>
+                              </td>
+                            </tr>
                             );
                           })}
-                        </>
-                      )}
-                      {fraisMois.length>0&&(
-                        <>
-                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:`${activeRecurrings.length>0?"12px":"0"} 0 8px`}}>Ponctuels</div>
-                          {fraisMois.map((f:any,i:number)=>(
-                            <div key={f.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<fraisMois.length-1?`1px solid ${border}`:"none"}}>
-                              <div style={{flex:1,minWidth:0,marginRight:12,display:"flex",alignItems:"center",gap:12}}>
-                                {chip("1×","rgba(75,85,99,0.07)",text3)}
-                                <div>
-                                  <span style={{fontSize:14,fontWeight:500,color:text}}>{f.type}</span>
-                                  {f.label&&<span style={{fontSize:13,color:text3}}> · {f.label}</span>}
-                                  <div style={{fontSize:12,color:text3,marginTop:1}}>{f.date}</div>
+                          {fraisMois.map((f:any)=>(
+                            <tr key={f.id} className="row">
+                              <td style={{...tdS,fontSize:12,color:text2,fontWeight:500}}>{f.date}</td>
+                              <td style={tdS}><TypePill type={f.type}/></td>
+                              <td style={{...tdS,fontSize:13,color:f.label?text:text3}}>{f.label||"—"}</td>
+                              <td style={{...tdS,textAlign:"right",fontWeight:700,fontSize:15,color:ocean,letterSpacing:"-0.2px"}}>{fmt(f.amount_ttc)}</td>
+                              <td style={{...tdS,textAlign:"right"}}>
+                                <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                                  <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
+                                  <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
                                 </div>
-                              </div>
-                              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                                <span style={{fontSize:15,fontWeight:700,color:basque}}>{fmt(f.amount_ttc)}</span>
-                                <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
-                                <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
-                              </div>
-                            </div>
+                              </td>
+                            </tr>
                           ))}
-                        </>
-                      )}
-                      {skippedRecurrings.length>0&&(
-                        <div style={{marginTop:12,paddingTop:12,borderTop:`1px dashed ${border}`}}>
-                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:8}}>Désactivés ce mois</div>
-                          {skippedRecurrings.map((r:any)=>(
-                            <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",opacity:0.4}}>
-                              <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.type}{r.label?` · ${r.label}`:""}</span>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontSize:13,color:text3}}>{fmt(r.amount_ttc)}</span>
-                                <button onClick={()=>unskipRecurringFrais(r.id)} style={{...sm(),background:"rgba(42,122,90,0.08)",color:sage,opacity:1}} title="Réactiver ce mois">↺</button>
-                              </div>
-                            </div>
-                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{background:"#F8FAFC",borderTop:`2px solid ${border}`}}>
+                            <td colSpan={3} style={{padding:"13px 14px",fontSize:12,fontWeight:700,color:text2,textTransform:"uppercase",letterSpacing:"0.5px"}}>Total TTC</td>
+                            <td style={{padding:"13px 14px",textAlign:"right",fontWeight:700,fontSize:16,color:ocean,letterSpacing:"-0.3px"}}>{fmt(totalFrais)}</td>
+                            <td/>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                  {skippedRecurrings.length>0&&(
+                    <div style={{padding:"12px 24px",borderTop:`1px dashed ${border}`,background:"#FAFAFA"}}>
+                      <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:8}}>Désactivés ce mois</div>
+                      {skippedRecurrings.map((r:any)=>(
+                        <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",opacity:0.4}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <TypePill type={r.type}/>
+                            <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.label||r.type}</span>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:13,color:ocean,fontWeight:600}}>{fmt(r.amount_ttc)}</span>
+                            <button onClick={()=>unskipRecurringFrais(r.id)} style={{...sm(),background:"rgba(42,122,90,0.08)",color:sage,opacity:1}} title="Réactiver ce mois">↺</button>
+                          </div>
                         </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:12,marginTop:4,borderTop:`2px solid ${border}`}}>
-                        <span style={{fontSize:12,color:text3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px"}}>Total TTC</span>
-                        <span style={{fontSize:16,fontWeight:700,color:basque}}>{fmt(totalFrais)}</span>
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
