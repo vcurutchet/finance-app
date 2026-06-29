@@ -18,20 +18,20 @@ const ENTRY_SUGGESTIONS = [
   "Salaire exceptionnel","Dividendes","Remboursement TVA","Remboursement URSSAF","Autre",
 ];
 
-const ocean="#1B4D6E", sage="#5B7B6A", basque="#C1443E", amber="#A0845C";
-const text="#2D3436", text2="#7F8C9B", text3="#B0BEC5", border="#E8E4DC";
+const ocean="#1B4D6E", sage="#2A7A5A", basque="#C0622A", amber="#8F6018";
+const text="#111827", text2="#4B5563", text3="#9CA3AF", border="#E5E7EB";
 const serif="'DM Serif Display',serif";
 
-const inp: React.CSSProperties = {background:"#FAFAF8",border:`1.5px solid ${border}`,borderRadius:10,padding:"12px 16px",color:text,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif",width:"100%",transition:"border-color 0.15s"};
-const sel: React.CSSProperties = {...inp,appearance:"none" as const,backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%237F8C9B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 16px center"};
+const inp: React.CSSProperties = {background:"#F9FAFB",border:`1.5px solid ${border}`,borderRadius:10,padding:"12px 16px",color:text,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif",width:"100%",transition:"border-color 0.15s"};
+const sel: React.CSSProperties = {...inp,appearance:"none" as const,backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 16px center"};
 const btnP: React.CSSProperties = {background:ocean,color:"#fff",border:"none",borderRadius:50,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.1px",whiteSpace:"nowrap"};
 const btnG: React.CSSProperties = {background:"transparent",border:`1.5px solid ${border}`,borderRadius:50,padding:"10px 22px",color:text2,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
-const card: React.CSSProperties = {background:"#FFF",border:"1px solid #EDEAE3",borderRadius:20,boxShadow:"0 1px 3px rgba(45,52,54,0.04),0 4px 20px rgba(45,52,54,0.06)"};
-const iconBtn = (danger=false): React.CSSProperties => ({background:danger?"rgba(193,68,62,0.07)":"rgba(45,52,54,0.04)",border:"none",borderRadius:8,width:34,height:34,color:danger?basque:text2,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0});
+const card: React.CSSProperties = {background:"#FFF",border:`1px solid ${border}`,borderRadius:16,boxShadow:"0 1px 2px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.05)"};
+const iconBtn = (danger=false): React.CSSProperties => ({background:danger?"rgba(192,98,42,0.08)":"rgba(75,85,99,0.07)",border:"none",borderRadius:8,width:34,height:34,color:danger?basque:text2,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0});
 
 // ─── Shared UI ───
 function Label({children}: {children:React.ReactNode}) {
-  return <label style={{fontSize:11,color:text2,fontWeight:600,letterSpacing:"0.7px",textTransform:"uppercase",display:"block",marginBottom:6}}>{children}</label>;
+  return <label style={{fontSize:12,color:text2,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{children}</label>;
 }
 function Field({label,children}: {label:string,children:React.ReactNode}) {
   return <div style={{display:"flex",flexDirection:"column",gap:0}}><Label>{label}</Label>{children}</div>;
@@ -888,33 +888,56 @@ export default function Home() {
         )}
 
         {/* ══ PRO — Suivi mensuel ══ */}
-        {appMode==="pro"&&proTab==="pro-mouvements"&&(
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        {appMode==="pro"&&proTab==="pro-mouvements"&&(()=>{
+          const caMois=proForecast.find((f:any)=>f.month_key===mk)?.ca_declare||0;
+          const tresoMois=proAnnual[month]?.tresoTotale||0;
+          const fraisAutoAmt=proExits.find((e:any)=>e.label==="__frais_auto__")?.amount||0;
+          const rowLine=(label:string,val:number,color:string)=>(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:`1px solid ${border}`}}>
+              <span style={{fontSize:13,color:text2}}>{label}</span>
+              <span style={{fontSize:14,fontWeight:600,color}}>{fmt(val)}</span>
+            </div>
+          );
+          return (
+          <div style={{display:"flex",flexDirection:"column",gap:24}}>
 
             {/* Sélecteur de mois */}
-            <div style={{display:"flex",alignItems:"center",gap:20,paddingBottom:8,borderBottom:`1px solid ${border}`}}>
-              <button onClick={prevMonth} disabled={year===2026&&month===0} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:year===2026&&month===0?"default":"pointer",padding:"4px 8px",lineHeight:1,opacity:year===2026&&month===0?0.2:1}}>‹</button>
-              <div style={{fontFamily:serif,fontSize:24,fontWeight:400,color:text,lineHeight:1}}>{MONTHS_FR[month]} {year}</div>
-              <button onClick={nextMonth} style={{background:"none",border:"none",color:text3,fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>›</button>
+            <div style={{display:"flex",alignItems:"center",gap:20}}>
+              <button onClick={prevMonth} disabled={year===2026&&month===0} style={{background:border,border:"none",color:text2,fontSize:18,cursor:year===2026&&month===0?"default":"pointer",width:38,height:38,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",opacity:year===2026&&month===0?0.3:1}}>‹</button>
+              <div>
+                <div style={{fontFamily:serif,fontSize:30,fontWeight:400,color:text,lineHeight:1.1,letterSpacing:"-0.3px"}}>{MONTHS_FR[month]}</div>
+                <div style={{fontSize:13,color:text3,marginTop:2,fontWeight:500}}>{year}</div>
+              </div>
+              <button onClick={nextMonth} style={{background:border,border:"none",color:text2,fontSize:18,cursor:"pointer",width:38,height:38,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
             </div>
 
-            {/* CA Facturé ce mois */}
-            <div style={{...card,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+            {/* KPI Strip */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+              {[
+                {label:"CA Facturé",    val:caMois,            color:ocean,                               sub:"engagement comptable"},
+                {label:"Encaissé",      val:proC.totalEntrees, color:sage,                                sub:`${proEntries.length} mouvement${proEntries.length!==1?"s":""}`},
+                {label:"Décaissé",      val:proC.totalSorties, color:basque,                              sub:`${proExits.filter((e:any)=>e.label!=="__frais_auto__").length} sortie${proExits.length!==1?"s":""}`},
+                {label:"Net du mois",   val:proC.netMois,      color:proC.netMois>=0?sage:basque,         sub:"encaissé − décaissé"},
+              ].map((k,i)=>(
+                <div key={i} style={{...card,padding:"18px 20px",position:"relative",overflow:"hidden"}}>
+                  <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:k.color,borderRadius:"16px 16px 0 0"}}/>
+                  <div style={{fontSize:11,color:text3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:10}}>{k.label}</div>
+                  <div style={{fontSize:24,fontWeight:400,color:k.color,fontFamily:serif,lineHeight:1,letterSpacing:"-0.2px"}}>{fmt(k.val)}</div>
+                  <div style={{fontSize:11,color:text3,marginTop:8,lineHeight:1.4}}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* CA Facturé — édition compacte */}
+            <div style={{background:"#F8FAFC",border:`1px solid ${border}`,borderRadius:12,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap"}}>
               <div>
-                <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>CA Facturé — {MONTHS_FR[month]} {year}</div>
-                <div style={{fontSize:12,color:text3,lineHeight:1.5}}>Montant facturé (engagement comptable), indépendant des encaissements</div>
+                <span style={{fontSize:12,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>CA Facturé — {MONTHS_FR[month]} {year}</span>
+                <span style={{fontSize:12,color:text3,marginLeft:12}}>Engagement comptable, indépendant des encaissements</span>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <input
-                  type="number"
-                  value={caDeclareDraft}
-                  onChange={e=>setCaDeclareDraft(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&saveCaDeclare()}
-                  placeholder="0"
-                  style={{background:"#FAFAF8",border:`1.5px solid ${border}`,borderRadius:10,padding:"10px 14px",color:text,fontSize:15,outline:"none",fontFamily:"'DM Sans',sans-serif",width:160,textAlign:"right",transition:"border-color 0.15s"}}
-                />
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <input type="number" value={caDeclareDraft} onChange={e=>setCaDeclareDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveCaDeclare()} placeholder="0" style={{...inp,width:140,textAlign:"right",padding:"9px 14px",fontSize:14}}/>
                 <span style={{fontSize:13,color:text3}}>€</span>
-                <button onClick={saveCaDeclare} style={{...btnP,fontSize:12,padding:"10px 18px"}}>Enregistrer</button>
+                <button onClick={saveCaDeclare} style={{...btnP,fontSize:12,padding:"9px 18px"}}>OK</button>
               </div>
             </div>
 
@@ -922,12 +945,12 @@ export default function Home() {
             {year===2026&&month===0&&(
               <div style={{...card,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
-                  <div style={{fontSize:11,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Solde initial — 01/01/2026</div>
-                  <div style={{fontSize:26,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
+                  <div style={{fontSize:12,color:text2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Solde initial — 01/01/2026</div>
+                  <div style={{fontSize:28,fontWeight:400,fontFamily:serif,color:proTreasury?.initial_balance!=null&&proTreasury.initial_balance>0?ocean:text3}}>
                     {proTreasury?.initial_balance!=null?fmt(proTreasury.initial_balance):"Non défini"}
                   </div>
                 </div>
-                <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"8px 16px"}}>
+                <button onClick={()=>setModal("initBalance")} style={{...btnG,fontSize:12,padding:"9px 18px"}}>
                   {proTreasury?.initial_balance!=null?"Modifier":"Définir →"}
                 </button>
               </div>
@@ -937,66 +960,72 @@ export default function Home() {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
 
               {/* Entrées */}
-              <div style={{...card,padding:"22px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                  <h3 style={{margin:0,fontSize:15,fontFamily:serif,fontWeight:400,color:text}}>Entrées</h3>
-                  <button onClick={()=>setModal("addEntry")} style={{...btnP,padding:"6px 14px",fontSize:12}}>+</button>
+              <div style={{...card,padding:"22px 24px",borderTop:`3px solid ${sage}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div>
+                    <h3 style={{margin:0,fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Entrées</h3>
+                    {proEntries.length>0&&<div style={{fontSize:12,color:text3,marginTop:2}}>{fmt(proC.totalEntrees)} encaissé</div>}
+                  </div>
+                  <button onClick={()=>setModal("addEntry")} style={{...btnP,padding:"7px 16px",fontSize:12}}>+ Ajouter</button>
                 </div>
-                {proEntries.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucune entrée</p>:
+                {proEntries.length===0?<p style={{margin:0,fontSize:14,color:text3}}>Aucune entrée ce mois</p>:
                   <div style={{display:"flex",flexDirection:"column"}}>
                     {proEntries.map((e,i)=>{
                       const offYear=e.exercise_year&&e.exercise_year!==year;
                       return (
-                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:i<proEntries.length-1?`1px solid #F2EFE9`:"none",opacity:offYear?0.55:1}}>
-                        <div>
-                          <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6}}>
+                      <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:i<proEntries.length-1?`1px solid ${border}`:"none",opacity:offYear?0.5:1}}>
+                        <div style={{flex:1,minWidth:0,marginRight:12}}>
+                          <div style={{fontSize:14,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                             {e.type}
-                            {offYear&&<span style={{fontSize:10,fontWeight:600,background:"rgba(160,132,92,0.12)",color:amber,borderRadius:4,padding:"1px 6px"}}>Ex. {e.exercise_year}</span>}
+                            {offYear&&<span style={{fontSize:10,fontWeight:700,background:"rgba(143,96,24,0.1)",color:amber,borderRadius:4,padding:"2px 6px"}}>Ex. {e.exercise_year}</span>}
                           </div>
-                          <div style={{fontSize:11,color:text3}}>{e.date}</div>
+                          <div style={{fontSize:12,color:text3,marginTop:2}}>{e.date}</div>
                         </div>
-                        <div style={{display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{fontSize:13,fontWeight:600,color:offYear?text3:sage,marginRight:4}}>{fmt(e.amount)}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                          <span style={{fontSize:15,fontWeight:700,color:offYear?text3:sage}}>{fmt(e.amount)}</span>
                           <button onClick={()=>{setEditItem(e);setModal("editEntry")}} style={sm()}>✏</button>
                           <button onClick={()=>delEntry(e.id)} style={sm(true)}>✕</button>
                         </div>
                       </div>
                       );
                     })}
-                    <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                      <span style={{fontSize:12,color:text3}}>Total exercice {year}</span>
-                      <span style={{fontSize:15,fontWeight:600,color:sage}}>{fmt(proC.totalEntrees)}</span>
+                    <div style={{display:"flex",justifyContent:"space-between",paddingTop:12,marginTop:4}}>
+                      <span style={{fontSize:12,color:text3,fontWeight:500}}>Total exercice {year}</span>
+                      <span style={{fontSize:16,fontWeight:700,color:sage}}>{fmt(proC.totalEntrees)}</span>
                     </div>
                   </div>
                 }
               </div>
 
               {/* Sorties */}
-              <div style={{...card,padding:"22px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                  <h3 style={{margin:0,fontSize:15,fontFamily:serif,fontWeight:400,color:text}}>Sorties</h3>
-                  <button onClick={()=>setModal("addExit")} style={{...btnP,padding:"6px 14px",fontSize:12,background:basque}}>+</button>
+              <div style={{...card,padding:"22px 24px",borderTop:`3px solid ${basque}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div>
+                    <h3 style={{margin:0,fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Sorties</h3>
+                    {proExits.length>0&&<div style={{fontSize:12,color:text3,marginTop:2}}>{fmt(proC.totalSorties)} décaissé</div>}
+                  </div>
+                  <button onClick={()=>setModal("addExit")} style={{...btnP,padding:"7px 16px",fontSize:12,background:basque}}>+ Ajouter</button>
                 </div>
                 {(()=>{
                   const manualExits=proExits.filter((e:any)=>e.label!=="__frais_auto__");
                   const fraisAutoExit=proExits.find((e:any)=>e.label==="__frais_auto__");
-                  if(proExits.length===0)return<p style={{margin:0,fontSize:13,color:text3}}>Aucune sortie</p>;
+                  if(proExits.length===0)return<p style={{margin:0,fontSize:14,color:text3}}>Aucune sortie ce mois</p>;
                   return (
                     <div style={{display:"flex",flexDirection:"column"}}>
                       {manualExits.map((e:any,i:number)=>{
                         const offYear=e.exercise_year&&e.exercise_year!==year;
                         return (
-                        <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:`1px solid #F2EFE9`,opacity:offYear?0.55:1}}>
-                          <div>
-                            <div style={{fontSize:13,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                        <div key={e.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:`1px solid ${border}`,opacity:offYear?0.5:1}}>
+                          <div style={{flex:1,minWidth:0,marginRight:12}}>
+                            <div style={{fontSize:14,fontWeight:500,color:text,lineHeight:1.3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                               {e.label||e.category}
-                              {offYear&&<span style={{fontSize:10,fontWeight:600,background:"rgba(160,132,92,0.12)",color:amber,borderRadius:4,padding:"1px 6px"}}>Ex. {e.exercise_year}</span>}
-                              {e.imputation_month_key&&e.imputation_month_key!==mk&&<span style={{fontSize:10,fontWeight:600,background:"rgba(27,77,110,0.08)",color:ocean,borderRadius:4,padding:"1px 6px"}}>{e.imputation_month_key}</span>}
+                              {offYear&&<span style={{fontSize:10,fontWeight:700,background:"rgba(143,96,24,0.1)",color:amber,borderRadius:4,padding:"2px 6px"}}>Ex. {e.exercise_year}</span>}
+                              {e.imputation_month_key&&e.imputation_month_key!==mk&&<span style={{fontSize:10,fontWeight:700,background:"rgba(27,77,110,0.08)",color:ocean,borderRadius:4,padding:"2px 6px"}}>{e.imputation_month_key}</span>}
                             </div>
-                            <div style={{fontSize:11,color:text3}}>{e.label?`${e.category} · `:""}{e.date}</div>
+                            <div style={{fontSize:12,color:text3,marginTop:2}}>{e.label?`${e.category} · `:""}{e.date}</div>
                           </div>
-                          <div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <span style={{fontSize:13,fontWeight:600,color:offYear?text3:basque,marginRight:4}}>{fmt(e.amount)}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                            <span style={{fontSize:15,fontWeight:700,color:offYear?text3:basque}}>{fmt(e.amount)}</span>
                             <button onClick={()=>{setEditItem(e);setModal("editExit")}} style={sm()}>✏</button>
                             <button onClick={()=>delExit(e.id)} style={sm(true)}>✕</button>
                           </div>
@@ -1004,17 +1033,17 @@ export default function Home() {
                         );
                       })}
                       {fraisAutoExit&&(
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 4px",borderBottom:`1px solid #F2EFE9`,opacity:0.65}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:`1px solid ${border}`,opacity:0.7}}>
                           <div>
-                            <div style={{fontSize:13,fontWeight:500,color:sage,fontStyle:"italic"}}>Frais pro</div>
-                            <div style={{fontSize:11,color:text3}}>Onglet Frais · auto</div>
+                            <div style={{fontSize:14,fontWeight:500,color:text2,fontStyle:"italic"}}>Frais pro (auto)</div>
+                            <div style={{fontSize:12,color:text3,marginTop:2}}>Calculé depuis l'onglet Frais</div>
                           </div>
-                          <span style={{fontSize:13,fontWeight:600,color:basque,marginRight:52}}>{fmt(fraisAutoExit.amount)}</span>
+                          <span style={{fontSize:15,fontWeight:700,color:basque,marginRight:52}}>{fmt(fraisAutoExit.amount)}</span>
                         </div>
                       )}
-                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                        <span style={{fontSize:12,color:text3}}>Total</span>
-                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(proC.totalSorties)}</span>
+                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:12,marginTop:4}}>
+                        <span style={{fontSize:12,color:text3,fontWeight:500}}>Total</span>
+                        <span style={{fontSize:16,fontWeight:700,color:basque}}>{fmt(proC.totalSorties)}</span>
                       </div>
                     </div>
                   );
@@ -1031,52 +1060,59 @@ export default function Home() {
               const totalRecurring=activeRecurrings.reduce((s:number,r:any)=>s+Number(r.amount_ttc),0);
               const totalFrais=totalOneTime+totalRecurring;
               const hasAny=fraisMois.length>0||activeRecurrings.length>0||skippedRecurrings.length>0;
+              const chip=(label:string,bg:string,col:string)=>(
+                <span style={{fontSize:10,fontWeight:700,background:bg,color:col,borderRadius:5,padding:"2px 7px",letterSpacing:"0.4px",textTransform:"uppercase"}}>{label}</span>
+              );
               return (
-                <div style={{...card,padding:"22px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                    <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Frais — {MONTHS_FR[month]} {year}</h3>
-                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"6px 14px",fontSize:12}}>+ Ajouter</button>
+                <div style={{...card,padding:"22px 24px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                    <div>
+                      <h3 style={{margin:0,fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Frais professionnels</h3>
+                      {hasAny&&<div style={{fontSize:12,color:text3,marginTop:2}}>{fmt(totalFrais)} TTC ce mois</div>}
+                    </div>
+                    <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"7px 16px",fontSize:12}}>+ Ajouter</button>
                   </div>
-                  {!hasAny?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
+                  {!hasAny?<p style={{margin:0,fontSize:14,color:text3}}>Aucun frais ce mois</p>:(
                     <div style={{display:"flex",flexDirection:"column"}}>
-                      {/* Recurring frais actifs */}
                       {activeRecurrings.length>0&&(
                         <>
-                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:"0 4px 6px",marginBottom:2}}>Récurrents</div>
-                          {activeRecurrings.map((r:any,i:number)=>{
+                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",paddingBottom:8,marginBottom:2}}>Récurrents</div>
+                          {activeRecurrings.map((r:any)=>{
                             const dateStr=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:null;
                             return (
-                            <div key={r.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:`1px solid #F2EFE9`}}>
-                              <div>
-                                {dateStr
-                                  ?<span style={{fontSize:13,color:text3}}>{dateStr}</span>
-                                  :<span style={{fontSize:11,color:amber,fontWeight:600,letterSpacing:"0.3px"}}>Mensuel</span>
-                                }
+                            <div key={r.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${border}`}}>
+                              <div style={{flex:1,minWidth:0,marginRight:12,display:"flex",alignItems:"center",gap:12}}>
+                                {chip("↻","rgba(42,122,90,0.08)",sage)}
+                                <div>
+                                  <span style={{fontSize:14,fontWeight:500,color:text}}>{r.type}</span>
+                                  {r.label&&<span style={{fontSize:13,color:text3}}> · {r.label}</span>}
+                                  {dateStr&&<div style={{fontSize:12,color:text3,marginTop:1}}>{dateStr}</div>}
+                                </div>
                               </div>
-                              <div style={{minWidth:0}}>
-                                <span style={{fontSize:13,fontWeight:500,color:text}}>{r.type}</span>
-                                {r.label&&<span style={{fontSize:12,color:text3}}> · {r.label}</span>}
+                              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                                <span style={{fontSize:15,fontWeight:700,color:basque}}>{fmt(r.amount_ttc)}</span>
+                                <button onClick={()=>skipRecurringFrais(r.id)} style={{...sm(),background:"rgba(143,96,24,0.08)",color:amber}} title="Désactiver ce mois">⊘</button>
                               </div>
-                              <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(r.amount_ttc)}</span>
-                              <button onClick={()=>skipRecurringFrais(r.id)} style={{...sm(),background:"rgba(160,132,92,0.1)",color:amber}} title="Désactiver ce mois">⊘</button>
                             </div>
                             );
                           })}
                         </>
                       )}
-                      {/* Frais ponctuels */}
                       {fraisMois.length>0&&(
                         <>
-                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:"8px 4px 6px",marginTop:activeRecurrings.length>0?4:0}}>Ponctuels</div>
+                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:`${activeRecurrings.length>0?"12px":"0"} 0 8px`}}>Ponctuels</div>
                           {fraisMois.map((f:any,i:number)=>(
-                            <div key={f.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:i<fraisMois.length-1?`1px solid #F2EFE9`:"none"}}>
-                              <span style={{fontSize:13,color:text3}}>{f.date}</span>
-                              <div style={{minWidth:0}}>
-                                <span style={{fontSize:13,fontWeight:500,color:text}}>{f.type}</span>
-                                {f.label&&<span style={{fontSize:12,color:text3}}> · {f.label}</span>}
+                            <div key={f.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<fraisMois.length-1?`1px solid ${border}`:"none"}}>
+                              <div style={{flex:1,minWidth:0,marginRight:12,display:"flex",alignItems:"center",gap:12}}>
+                                {chip("1×","rgba(75,85,99,0.07)",text3)}
+                                <div>
+                                  <span style={{fontSize:14,fontWeight:500,color:text}}>{f.type}</span>
+                                  {f.label&&<span style={{fontSize:13,color:text3}}> · {f.label}</span>}
+                                  <div style={{fontSize:12,color:text3,marginTop:1}}>{f.date}</div>
+                                </div>
                               </div>
-                              <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(f.amount_ttc)}</span>
-                              <div style={{display:"flex",gap:4}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                                <span style={{fontSize:15,fontWeight:700,color:basque}}>{fmt(f.amount_ttc)}</span>
                                 <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
                                 <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
                               </div>
@@ -1084,26 +1120,23 @@ export default function Home() {
                           ))}
                         </>
                       )}
-                      {/* Récurrents désactivés ce mois */}
                       {skippedRecurrings.length>0&&(
-                        <div style={{marginTop:10,padding:"10px 4px 0",borderTop:`1px dashed #E8E4DC`}}>
-                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:6}}>Désactivés ce mois</div>
+                        <div style={{marginTop:12,paddingTop:12,borderTop:`1px dashed ${border}`}}>
+                          <div style={{fontSize:11,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:8}}>Désactivés ce mois</div>
                           {skippedRecurrings.map((r:any)=>(
-                            <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",opacity:0.45}}>
-                              <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                                <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.type}{r.label?` · ${r.label}`:""}</span>
-                              </div>
+                            <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",opacity:0.4}}>
+                              <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.type}{r.label?` · ${r.label}`:""}</span>
                               <div style={{display:"flex",alignItems:"center",gap:8}}>
                                 <span style={{fontSize:13,color:text3}}>{fmt(r.amount_ttc)}</span>
-                                <button onClick={()=>unskipRecurringFrais(r.id)} style={{...sm(),background:"rgba(91,123,106,0.1)",color:sage,opacity:1}} title="Réactiver ce mois">↺</button>
+                                <button onClick={()=>unskipRecurringFrais(r.id)} style={{...sm(),background:"rgba(42,122,90,0.08)",color:sage,opacity:1}} title="Réactiver ce mois">↺</button>
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
-                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                        <span style={{fontSize:12,color:text3}}>Total TTC</span>
-                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalFrais)}</span>
+                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:12,marginTop:4,borderTop:`2px solid ${border}`}}>
+                        <span style={{fontSize:12,color:text3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px"}}>Total TTC</span>
+                        <span style={{fontSize:16,fontWeight:700,color:basque}}>{fmt(totalFrais)}</span>
                       </div>
                     </div>
                   )}
@@ -1111,40 +1144,44 @@ export default function Home() {
               );
             })()}
 
-            {/* Récap mensuel */}
-            <div style={{...card,padding:"26px"}}>
-              <h3 style={{margin:"0 0 18px",fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Récapitulatif — {MONTHS_FR[month]} {year}</h3>
-              {[
-                {label:"Total entrées",             val:proC.totalEntrees,              color:sage,  bold:false},
-                {label:"Total sorties",              val:proC.totalSorties,              color:basque,bold:false},
-                {label:"Différence du mois",         val:proC.netMois,                   color:proC.netMois>=0?sage:basque, bold:true},
-                {label:"Trésorerie totale cumulée",  val:proAnnual[month]?.tresoTotale||0, color:ocean, bold:true},
-              ].map((row,i,arr)=>(
-                <div key={row.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<arr.length-1?`1px solid #F2EFE9`:"none"}}>
-                  <span style={{fontSize:14,color:text2,fontWeight:row.bold?600:400}}>{row.label}</span>
-                  <span style={{fontSize:row.bold?22:15,fontWeight:row.bold?400:600,color:row.color,fontFamily:row.bold?serif:"inherit"}}>{fmt(row.val)}</span>
-                </div>
-              ))}
+            {/* Récapitulatif */}
+            <div style={{...card,padding:"24px 26px"}}>
+              <h3 style={{margin:"0 0 20px",fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Récapitulatif — {MONTHS_FR[month]} {year}</h3>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+                {[
+                  {label:"Net du mois",          val:proC.netMois,  color:proC.netMois>=0?sage:basque,  bg:proC.netMois>=0?"rgba(42,122,90,0.06)":"rgba(192,98,42,0.06)", brd:proC.netMois>=0?"rgba(42,122,90,0.2)":"rgba(192,98,42,0.2)"},
+                  {label:"Trésorerie cumulée",   val:tresoMois,     color:ocean,                          bg:"rgba(27,77,110,0.06)",                                         brd:"rgba(27,77,110,0.18)"},
+                ].map(k=>(
+                  <div key={k.label} style={{background:k.bg,border:`1px solid ${k.brd}`,borderRadius:12,padding:"18px 20px"}}>
+                    <div style={{fontSize:11,color:k.color,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8,opacity:0.75}}>{k.label}</div>
+                    <div style={{fontSize:28,fontWeight:400,fontFamily:serif,color:k.color,lineHeight:1,letterSpacing:"-0.3px"}}>{fmt(k.val)}</div>
+                  </div>
+                ))}
+              </div>
+              {rowLine("Total entrées",proC.totalEntrees,sage)}
+              {rowLine("Total sorties",proC.totalSorties,basque)}
+              {fraisAutoAmt>0&&rowLine("dont Frais pro",fraisAutoAmt,text2)}
             </div>
 
             {/* Détail sorties par catégorie */}
             {proExits.length>0&&(
-              <div style={{...card,padding:"26px"}}>
-                <h3 style={{margin:"0 0 16px",fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Détail des sorties</h3>
+              <div style={{...card,padding:"24px 26px"}}>
+                <h3 style={{margin:"0 0 16px",fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Détail des sorties</h3>
                 {EXIT_CATS.map(cat=>{
                   const total=proExits.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount),0);
                   if(!total)return null;
                   return (
-                    <div key={cat} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid #F2EFE9`}}>
-                      <span style={{fontSize:13,color:text}}>{cat}</span>
-                      <span style={{fontSize:13,fontWeight:600,color:text2}}>{fmt(total)}</span>
+                    <div key={cat} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${border}`}}>
+                      <span style={{fontSize:14,color:text}}>{cat}</span>
+                      <span style={{fontSize:14,fontWeight:600,color:text2}}>{fmt(total)}</span>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ══ PRO — Bilan annuel ══ */}
         {appMode==="pro"&&proTab==="pro-annual"&&(
