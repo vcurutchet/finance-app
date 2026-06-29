@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MONTHS_S  = ["Jan","Fév","Mars","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+const fmtDate = (d: string) => { if(!d)return"—"; const p=d.split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; };
+const COLOR_PRESETS = ["#2563EB","#7C3AED","#DB2777","#DC2626","#EA580C","#D97706","#16A34A","#0D9488","#0EA5E9","#6366F1","#475569","#9CA3AF"];
 const monthKey = (y: number, m: number) => `${y}-${String(m+1).padStart(2,"0")}`;
 
 const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🎭 Loisirs","👕 Vêtements","🎓 Éducation","🐾 Animaux","🔧 Divers"];
@@ -34,12 +36,15 @@ const FRAIS_COLORS: Record<string,{bg:string,dot:string}> = {
   "Fournitures":    {bg:"rgba(107,114,128,0.1)",dot:"#6B7280"},
   "Sous-traitance": {bg:"rgba(245,158,11,0.1)", dot:"#D97706"},
 };
-const fraisColor=(t:string)=>FRAIS_COLORS[t]||{bg:"rgba(107,114,128,0.08)",dot:"#9CA3AF"};
-function TypePill({type}: {type:string}) {
-  const c=fraisColor(type);
+const fraisColor=(t:string, ov:Record<string,string>={})=>{
+  const dot=ov[t]||FRAIS_COLORS[t]?.dot||"#9CA3AF";
+  const r=parseInt(dot.slice(1,3),16)||156, g=parseInt(dot.slice(3,5),16)||163, b=parseInt(dot.slice(5,7),16)||175;
+  return {bg:`rgba(${r},${g},${b},0.1)`,dot};
+};
+function TypePill({type,dot,bg}:{type:string,dot:string,bg:string}) {
   return (
-    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,color:c.dot,borderRadius:6,padding:"3px 9px",fontSize:11,fontWeight:700,whiteSpace:"nowrap",letterSpacing:"0.1px"}}>
-      <span style={{width:6,height:6,borderRadius:"50%",background:c.dot,flexShrink:0,display:"inline-block"}}/>
+    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:bg,color:dot,borderRadius:6,padding:"3px 9px",fontSize:11,fontWeight:700,whiteSpace:"nowrap",letterSpacing:"0.1px"}}>
+      <span style={{width:6,height:6,borderRadius:"50%",background:dot,flexShrink:0,display:"inline-block"}}/>
       {type}
     </span>
   );
@@ -366,6 +371,14 @@ export default function Home() {
   const [editItem,setEditItem] = useState<any>(null);
   const [caDeclareDraft,setCaDeclareDraft] = useState<string>("");
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
+  const [fraisColorOverrides,setFraisColorOverrides] = useState<Record<string,string>>(()=>{
+    try{return JSON.parse(localStorage.getItem("fraisColors")||"{}")}catch{return{}}
+  });
+  const updateFraisColor=(type:string,color:string)=>{
+    const next={...fraisColorOverrides,[type]:color};
+    setFraisColorOverrides(next);
+    localStorage.setItem("fraisColors",JSON.stringify(next));
+  };
 
   // Perso data
   const [recurring,setRecurring] = useState<any[]>([]);
@@ -663,6 +676,8 @@ export default function Home() {
 
   // Helper for small icon buttons
   const sm = (danger=false): React.CSSProperties => ({...iconBtn(danger),width:28,height:28,fontSize:12});
+  // TypePill helper with user color overrides
+  const pill = (type:string) => { const c=fraisColor(type,fraisColorOverrides); return <TypePill type={type} dot={c.dot} bg={c.bg}/>; };
 
   return (
     <div style={{minHeight:"100vh"}}>
@@ -868,7 +883,7 @@ export default function Home() {
                       <div style={{width:3,height:28,borderRadius:2,background:basque,flexShrink:0}}/>
                       <div>
                         <div style={{fontSize:15,fontWeight:500,color:text}}>{e.name}</div>
-                        <div style={{fontSize:12,color:text3,marginTop:2}}>{e.category}{e.date?` · ${e.date}`:""}</div>
+                        <div style={{fontSize:12,color:text3,marginTop:2}}>{e.category}{e.date?` · ${fmtDate(e.date)}`:""}</div>
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1002,7 +1017,7 @@ export default function Home() {
                             {e.type}
                             {offYear&&<span style={{fontSize:10,fontWeight:700,background:"rgba(143,96,24,0.1)",color:amber,borderRadius:4,padding:"2px 6px"}}>Ex. {e.exercise_year}</span>}
                           </div>
-                          <div style={{fontSize:12,color:text3,marginTop:2}}>{e.date}</div>
+                          <div style={{fontSize:12,color:text3,marginTop:2}}>{fmtDate(e.date)}</div>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                           <span style={{fontSize:15,fontWeight:700,color:offYear?text3:sage}}>{fmt(e.amount)}</span>
@@ -1045,7 +1060,7 @@ export default function Home() {
                               {offYear&&<span style={{fontSize:10,fontWeight:700,background:"rgba(143,96,24,0.1)",color:amber,borderRadius:4,padding:"2px 6px"}}>Ex. {e.exercise_year}</span>}
                               {e.imputation_month_key&&e.imputation_month_key!==mk&&<span style={{fontSize:10,fontWeight:700,background:"rgba(27,77,110,0.08)",color:ocean,borderRadius:4,padding:"2px 6px"}}>{e.imputation_month_key}</span>}
                             </div>
-                            <div style={{fontSize:12,color:text3,marginTop:2}}>{e.label?`${e.category} · `:""}{e.date}</div>
+                            <div style={{fontSize:12,color:text3,marginTop:2}}>{e.label?`${e.category} · `:""}{fmtDate(e.date)}</div>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             <span style={{fontSize:15,fontWeight:700,color:offYear?text3:basque}}>{fmt(e.amount)}</span>
@@ -1106,14 +1121,14 @@ export default function Home() {
                         </thead>
                         <tbody>
                           {activeRecurrings.map((r:any)=>{
-                            const ds=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:"Mensuel";
+                            const dsRaw=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:null;
                             return (
                             <tr key={r.id} className="row" style={{background:"rgba(42,122,90,0.025)"}}>
                               <td style={tdS}>
                                 <span style={{color:sage,fontWeight:700,fontSize:11,marginRight:4}}>↻</span>
-                                <span style={{fontSize:12,color:text2,fontWeight:500}}>{ds}</span>
+                                <span style={{fontSize:12,color:text2,fontWeight:500}}>{dsRaw?fmtDate(dsRaw):"Mensuel"}</span>
                               </td>
-                              <td style={tdS}><TypePill type={r.type}/></td>
+                              <td style={tdS}>{pill(r.type)}</td>
                               <td style={{...tdS,fontSize:13,color:r.label?text:text3}}>{r.label||"—"}</td>
                               <td style={{...tdS,textAlign:"right",fontWeight:700,fontSize:15,color:ocean,letterSpacing:"-0.2px"}}>{fmt(r.amount_ttc)}</td>
                               <td style={{...tdS,textAlign:"right"}}>
@@ -1124,8 +1139,8 @@ export default function Home() {
                           })}
                           {fraisMois.map((f:any)=>(
                             <tr key={f.id} className="row">
-                              <td style={{...tdS,fontSize:12,color:text2,fontWeight:500}}>{f.date}</td>
-                              <td style={tdS}><TypePill type={f.type}/></td>
+                              <td style={{...tdS,fontSize:12,color:text2,fontWeight:500}}>{fmtDate(f.date)}</td>
+                              <td style={tdS}>{pill(f.type)}</td>
                               <td style={{...tdS,fontSize:13,color:f.label?text:text3}}>{f.label||"—"}</td>
                               <td style={{...tdS,textAlign:"right",fontWeight:700,fontSize:15,color:ocean,letterSpacing:"-0.2px"}}>{fmt(f.amount_ttc)}</td>
                               <td style={{...tdS,textAlign:"right"}}>
@@ -1153,7 +1168,7 @@ export default function Home() {
                       {skippedRecurrings.map((r:any)=>(
                         <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",opacity:0.4}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <TypePill type={r.type}/>
+                            {pill(r.type)}
                             <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.label||r.type}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1402,6 +1417,9 @@ export default function Home() {
         {/* ══ PRO — Frais récurrents ══ */}
         {appMode==="pro"&&proTab==="pro-frais-recurrents"&&(()=>{
           const totalMensuel=proRecurringFrais.reduce((s,r)=>s+Number(r.amount_ttc),0);
+          const allTypes=[...new Set([...FRAIS_TYPES,...proRecurringFrais.map((r:any)=>r.type),...proFrais.map((f:any)=>f.type)].filter(Boolean))];
+          const thS: React.CSSProperties={padding:"10px 14px",textAlign:"left",fontSize:11,color:text2,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",borderBottom:`2px solid ${border}`,background:"#F8FAFC",whiteSpace:"nowrap"};
+          const tdS: React.CSSProperties={padding:"13px 14px",verticalAlign:"middle",borderBottom:`1px solid ${border}`};
           return (
             <div style={{display:"flex",flexDirection:"column",gap:20}}>
               <SectionHead
@@ -1410,39 +1428,79 @@ export default function Home() {
                 action={<button onClick={()=>setModal("addRecurringFrais")} style={btnP}>+ Ajouter</button>}
               />
               <div style={{background:"rgba(27,77,110,0.05)",borderRadius:12,padding:"14px 18px",fontSize:13,color:ocean,border:`1px solid rgba(27,77,110,0.12)`,lineHeight:1.6}}>
-                Ces frais s'appliquent automatiquement à chaque mois. Depuis <strong>Suivi mensuel</strong>, utilisez le bouton <strong>⊘</strong> pour en désactiver un pour un mois donné, et <strong>↺</strong> pour le réactiver.
+                Ces frais s'appliquent automatiquement à chaque mois. Depuis <strong>Suivi mensuel</strong>, utilisez <strong>⊘</strong> pour désactiver un frais un mois donné, et <strong>↺</strong> pour le réactiver.
               </div>
+
+              {/* Liste des frais récurrents */}
               {proRecurringFrais.length===0
                 ?<Empty label="Aucun frais récurrent défini"/>
                 :(
-                  <div style={{...card,padding:"22px"}}>
-                    <div style={{display:"flex",flexDirection:"column"}}>
-                      {proRecurringFrais.map((r,i)=>(
-                        <div key={r.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 4px",borderBottom:i<proRecurringFrais.length-1?`1px solid #F2EFE9`:"none"}}>
-                          <div>
-                            <div style={{fontSize:14,fontWeight:500,color:text}}>
-                              {r.type}
-                              {r.label&&<span style={{color:text3,fontWeight:400}}> · {r.label}</span>}
-                            </div>
-                            <div style={{fontSize:11,color:text3,marginTop:2}}>
-                              {r.prelevement_day?`Prélèvement le ${r.prelevement_day} de chaque mois`:"Mensuel · tous les mois"}
-                            </div>
-                          </div>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <span style={{fontSize:15,fontWeight:600,color:basque,marginRight:8}}>{fmt(r.amount_ttc)}</span>
-                            <button onClick={()=>{setEditItem(r);setModal("editRecurringFrais")}} style={iconBtn()}>✏</button>
-                            <button onClick={()=>delRecurringFrais(r.id)} style={iconBtn(true)}>✕</button>
-                          </div>
-                        </div>
-                      ))}
-                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
-                        <span style={{fontSize:12,color:text3}}>Total mensuel</span>
-                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalMensuel)}</span>
-                      </div>
+                  <div style={{...card,overflow:"hidden"}}>
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse"}}>
+                        <thead>
+                          <tr>
+                            <th style={thS}>Type</th>
+                            <th style={thS}>Libellé</th>
+                            <th style={thS}>Prélèvement</th>
+                            <th style={{...thS,textAlign:"right"}}>Montant / mois</th>
+                            <th style={{...thS,width:80}}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {proRecurringFrais.map((r:any)=>(
+                            <tr key={r.id} className="row">
+                              <td style={tdS}>{pill(r.type)}</td>
+                              <td style={{...tdS,fontSize:13,color:r.label?text:text3}}>{r.label||"—"}</td>
+                              <td style={{...tdS,fontSize:13,color:text2}}>{r.prelevement_day?`Le ${r.prelevement_day} du mois`:"Mensuel"}</td>
+                              <td style={{...tdS,textAlign:"right",fontWeight:700,fontSize:15,color:ocean}}>{fmt(r.amount_ttc)}</td>
+                              <td style={{...tdS,textAlign:"right"}}>
+                                <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                                  <button onClick={()=>{setEditItem(r);setModal("editRecurringFrais")}} style={sm()}>✏</button>
+                                  <button onClick={()=>delRecurringFrais(r.id)} style={sm(true)}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{background:"#F8FAFC",borderTop:`2px solid ${border}`}}>
+                            <td colSpan={3} style={{padding:"13px 14px",fontSize:12,fontWeight:700,color:text2,textTransform:"uppercase",letterSpacing:"0.5px"}}>Total mensuel</td>
+                            <td style={{padding:"13px 14px",textAlign:"right",fontWeight:700,fontSize:16,color:ocean}}>{fmt(totalMensuel)}</td>
+                            <td/>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </div>
                 )
               }
+
+              {/* Couleurs des catégories */}
+              <div style={{...card,padding:"24px 26px"}}>
+                <h3 style={{margin:"0 0 6px",fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Couleurs des catégories</h3>
+                <p style={{margin:"0 0 20px",fontSize:13,color:text3}}>Cliquez sur une pastille pour modifier sa couleur.</p>
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {allTypes.map(type=>{
+                    const c=fraisColor(type,fraisColorOverrides);
+                    const isCustom=!!fraisColorOverrides[type];
+                    return (
+                      <div key={type} style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                        <div style={{width:160,flexShrink:0}}><TypePill type={type} dot={c.dot} bg={c.bg}/></div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          {COLOR_PRESETS.map(color=>(
+                            <button key={color} onClick={()=>updateFraisColor(type,color)} style={{width:24,height:24,borderRadius:"50%",background:color,border:c.dot===color?`3px solid ${text}`:`2px solid transparent`,cursor:"pointer",padding:0,transition:"transform 0.1s",flexShrink:0}} title={color}/>
+                          ))}
+                          <input type="color" value={c.dot} onChange={e=>updateFraisColor(type,e.target.value)} style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${border}`,cursor:"pointer",padding:0,background:"none",flexShrink:0}} title="Couleur personnalisée"/>
+                          {isCustom&&(
+                            <button onClick={()=>updateFraisColor(type,FRAIS_COLORS[type]?.dot||"#9CA3AF")} style={{fontSize:11,color:text3,background:"none",border:"none",cursor:"pointer",padding:"2px 4px",textDecoration:"underline"}}>Réinitialiser</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           );
         })()}
