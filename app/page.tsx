@@ -223,6 +223,25 @@ function ExitForm({initial,onSubmit,onClose,title,defaultYear,defaultMk}: any) {
     </Modal>
   );
 }
+function RecurringFraisForm({initial,onSubmit,onClose,title,fraisTypes=[]}: any) {
+  const [type,setType]=useState(initial?.type||"");
+  const [label,setLabel]=useState(initial?.label||"");
+  const [amount,setAmt]=useState(initial?.amount_ttc||"");
+  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,label,amount_ttc:parseFloat(amount)})};
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div style={{display:"flex",flexDirection:"column",gap:18}}>
+        <Field label="Type">
+          <input list="rec-frais-type-list" value={type} onChange={e=>setType(e.target.value)} placeholder="ex : Abonnement logiciel" style={inp}/>
+          <datalist id="rec-frais-type-list">{fraisTypes.map((t:string)=><option key={t} value={t}/>)}</datalist>
+        </Field>
+        <Field label="Libellé"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : Notion Pro" style={inp}/></Field>
+        <Field label="Montant TTC mensuel (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
+        <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
+      </div>
+    </Modal>
+  );
+}
 function FraisForm({initial,onSubmit,onClose,title,fraisTypes=[]}: any) {
   const [type,setType]=useState(initial?.type||"");
   const [label,setLabel]=useState(initial?.label||"");
@@ -334,7 +353,9 @@ export default function Home() {
   const [allExits,setAllExits]       = useState<any[]>([]);
   const [proTreasury,setProTreasury] = useState<any>(null);
   const [proForecast,setProForecast] = useState<any[]>([]);
-  const [proFrais,setProFrais]       = useState<any[]>([]);
+  const [proFrais,setProFrais]             = useState<any[]>([]);
+  const [proRecurringFrais,setProRecurringFrais]       = useState<any[]>([]);
+  const [proRecurringFraisSkips,setProRecurringFraisSkips] = useState<any[]>([]);
 
   const mk     = monthKey(year,month);
   const userId = session?.user?.id;
@@ -365,7 +386,7 @@ export default function Home() {
   const loadProData=useCallback(async()=>{
     if(!userId)return;
     const yearKeys=Array.from({length:12},(_,i)=>monthKey(year,i));
-    const [{data:ent},{data:ext},{data:aEnt},{data:aExt},{data:trea},{data:fcast},{data:frais}]=await Promise.all([
+    const [{data:ent},{data:ext},{data:aEnt},{data:aExt},{data:trea},{data:fcast},{data:frais},{data:recFrais},{data:recSkips}]=await Promise.all([
       supabase.from("pro_entries").select("*").eq("user_id",userId).eq("month_key",mk).order("date"),
       supabase.from("pro_exits").select("*").eq("user_id",userId).eq("month_key",mk).order("date"),
       supabase.from("pro_entries").select("*").eq("user_id",userId).in("month_key",yearKeys),
@@ -373,12 +394,16 @@ export default function Home() {
       supabase.from("pro_treasury").select("*").eq("user_id",userId).maybeSingle(),
       supabase.from("pro_forecast").select("*").eq("user_id",userId).in("month_key",yearKeys),
       supabase.from("pro_frais").select("*").eq("user_id",userId).in("month_key",yearKeys).order("date"),
+      supabase.from("pro_recurring_frais").select("*").eq("user_id",userId).order("created_at"),
+      supabase.from("pro_recurring_frais_skips").select("*").eq("user_id",userId).in("month_key",yearKeys),
     ]);
     setProEntries(ent||[]);setProExits(ext||[]);
     setAllEntries(aEnt||[]);setAllExits(aExt||[]);
     setProTreasury(trea||null);
     setProForecast((fcast as any)||[]);
     setProFrais((frais as any)||[]);
+    setProRecurringFrais((recFrais as any)||[]);
+    setProRecurringFraisSkips((recSkips as any)||[]);
   },[userId,mk,year]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(()=>{
@@ -512,13 +537,23 @@ export default function Home() {
   };
   const syncFraisExit=async(targetMk: string)=>{
     if(!userId)return;
-    const {data}=await supabase.from("pro_frais").select("amount_ttc").eq("user_id",userId).eq("month_key",targetMk);
-    const total=(data||[]).reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
+    const [{data:fraisData},{data:recFraisData},{data:skipsData}]=await Promise.all([
+      supabase.from("pro_frais").select("amount_ttc").eq("user_id",userId).eq("month_key",targetMk),
+      supabase.from("pro_recurring_frais").select("id,amount_ttc").eq("user_id",userId),
+      supabase.from("pro_recurring_frais_skips").select("recurring_frais_id").eq("user_id",userId).eq("month_key",targetMk),
+    ]);
+    const totalOneTime=(fraisData||[]).reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
+    const skippedIds=new Set((skipsData||[]).map((s:any)=>s.recurring_frais_id));
+    const totalRecurring=(recFraisData||[]).filter((r:any)=>!skippedIds.has(r.id)).reduce((s:number,r:any)=>s+Number(r.amount_ttc),0);
+    const total=totalOneTime+totalRecurring;
     await supabase.from("pro_exits").delete().eq("user_id",userId).eq("month_key",targetMk).eq("label","__frais_auto__");
     if(total>0){
       const yr=parseInt(targetMk.split("-")[0]);
       await supabase.from("pro_exits").insert({user_id:userId,month_key:targetMk,category:"Frais pro",label:"__frais_auto__",amount:total,date:`${targetMk}-01`,exercise_year:yr,imputation_month_key:targetMk});
     }
+  };
+  const syncAllMonths=async()=>{
+    await Promise.all(Array.from({length:12},(_,i)=>monthKey(year,i)).map(k=>syncFraisExit(k)));
   };
   const addFrais=async(i: any)=>{
     const {error}=await supabase.from("pro_frais").insert({user_id:userId,month_key:mk,type:i.type,label:i.label||"",amount_ttc:i.amount_ttc,date:i.date});
@@ -535,6 +570,34 @@ export default function Home() {
   const delFrais=async(id: string,targetMk: string)=>{
     await supabase.from("pro_frais").delete().eq("id",id);
     await syncFraisExit(targetMk);
+    loadProData();
+  };
+  const addRecurringFrais=async(i: any)=>{
+    const {error}=await supabase.from("pro_recurring_frais").insert({user_id:userId,type:i.type,label:i.label||"",amount_ttc:i.amount_ttc});
+    if(error){console.error("addRecurringFrais:",error.message);alert("Erreur: "+error.message);return;}
+    await syncAllMonths();
+    loadProData();setModal(null);
+  };
+  const editRecurringFrais=async(i: any)=>{
+    const {error}=await supabase.from("pro_recurring_frais").update({type:i.type,label:i.label||"",amount_ttc:i.amount_ttc}).eq("id",i.id);
+    if(error){console.error("editRecurringFrais:",error.message);alert("Erreur: "+error.message);return;}
+    await syncAllMonths();
+    loadProData();setModal(null);setEditItem(null);
+  };
+  const delRecurringFrais=async(id: string)=>{
+    await supabase.from("pro_recurring_frais").delete().eq("id",id);
+    await supabase.from("pro_recurring_frais_skips").delete().eq("recurring_frais_id",id);
+    await syncAllMonths();
+    loadProData();
+  };
+  const skipRecurringFrais=async(recurringId: string)=>{
+    await supabase.from("pro_recurring_frais_skips").insert({user_id:userId,recurring_frais_id:recurringId,month_key:mk});
+    await syncFraisExit(mk);
+    loadProData();
+  };
+  const unskipRecurringFrais=async(recurringId: string)=>{
+    await supabase.from("pro_recurring_frais_skips").delete().eq("user_id",userId).eq("recurring_frais_id",recurringId).eq("month_key",mk);
+    await syncFraisExit(mk);
     loadProData();
   };
   const closeModal=()=>{setModal(null);setEditItem(null)};
@@ -555,9 +618,10 @@ export default function Home() {
     {id:"savings",   label:"Épargne"},
   ];
   const proTabs=[
-    {id:"pro-mouvements", label:"Suivi mensuel"},
-    {id:"pro-annual",     label:"Bilan annuel"},
-    {id:"pro-tresorerie", label:"Trésorerie"},
+    {id:"pro-mouvements",       label:"Suivi mensuel"},
+    {id:"pro-annual",           label:"Bilan annuel"},
+    {id:"pro-tresorerie",       label:"Trésorerie"},
+    {id:"pro-frais-recurrents", label:"Frais récurrents"},
   ];
   const activeTabs   = appMode==="perso"?persoTabs:proTabs;
   const activeTab    = appMode==="perso"?tab:proTab;
@@ -625,9 +689,10 @@ export default function Home() {
           <nav style={{width:220,flexShrink:0,background:"#FAFAF7",borderRight:`1px solid ${border}`,position:"sticky",top:60,height:"calc(100vh - 60px)",overflowY:"auto",padding:"28px 0",display:"flex",flexDirection:"column",gap:1}}>
             <div style={{padding:"0 20px 14px",fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase"}}>Curutchet Consulting</div>
             {[
-              {id:"pro-mouvements",  label:"Suivi mensuel"},
-              {id:"pro-annual",      label:"Bilan annuel"},
-              {id:"pro-tresorerie",  label:"Trésorerie"},
+              {id:"pro-mouvements",       label:"Suivi mensuel"},
+              {id:"pro-annual",           label:"Bilan annuel"},
+              {id:"pro-tresorerie",       label:"Trésorerie"},
+              {id:"pro-frais-recurrents", label:"Frais récurrents"},
             ].map(item=>(
               <button key={item.id} onClick={()=>setProTab(item.id)} style={{display:"block",width:"100%",textAlign:"left",padding:"12px 20px",border:"none",borderLeft:`3px solid ${proTab===item.id?ocean:"transparent"}`,background:proTab===item.id?"rgba(27,77,110,0.06)":"transparent",color:proTab===item.id?ocean:text2,fontWeight:proTab===item.id?600:400,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all 0.12s"}}>
                 {item.label}
@@ -956,37 +1021,77 @@ export default function Home() {
             {/* Frais */}
             {(()=>{
               const fraisMois=proFrais.filter((f:any)=>f.month_key===mk).sort((a:any,b:any)=>a.date.localeCompare(b.date));
-              const totalFraisMois=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
+              const activeRecurrings=proRecurringFrais.filter(r=>!proRecurringFraisSkips.some(s=>s.recurring_frais_id===r.id&&s.month_key===mk));
+              const skippedRecurrings=proRecurringFrais.filter(r=>proRecurringFraisSkips.some(s=>s.recurring_frais_id===r.id&&s.month_key===mk));
+              const totalOneTime=fraisMois.reduce((s:number,f:any)=>s+Number(f.amount_ttc),0);
+              const totalRecurring=activeRecurrings.reduce((s:number,r:any)=>s+Number(r.amount_ttc),0);
+              const totalFrais=totalOneTime+totalRecurring;
+              const hasAny=fraisMois.length>0||activeRecurrings.length>0||skippedRecurrings.length>0;
               return (
                 <div style={{...card,padding:"22px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                     <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Frais — {MONTHS_FR[month]} {year}</h3>
                     <button onClick={()=>setModal("addFrais")} style={{...btnP,padding:"6px 14px",fontSize:12}}>+ Ajouter</button>
                   </div>
-                  {fraisMois.length===0?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
+                  {!hasAny?<p style={{margin:0,fontSize:13,color:text3}}>Aucun frais ce mois</p>:(
                     <div style={{display:"flex",flexDirection:"column"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",padding:"0 4px 8px",borderBottom:`1px solid #F2EFE9`}}>
-                        {["Date","Type · Libellé","Montant TTC",""].map((h,i)=>(
-                          <span key={i} style={{fontSize:11,color:text2,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase",textAlign:i===2?"right":"left"}}>{h}</span>
-                        ))}
-                      </div>
-                      {fraisMois.map((f:any,i:number)=>(
-                        <div key={f.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:i<fraisMois.length-1?`1px solid #F2EFE9`:"none"}}>
-                          <span style={{fontSize:13,color:text3}}>{f.date}</span>
-                          <div style={{minWidth:0}}>
-                            <span style={{fontSize:13,fontWeight:500,color:text}}>{f.type}</span>
-                            {f.label&&<span style={{fontSize:12,color:text3}}> · {f.label}</span>}
-                          </div>
-                          <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(f.amount_ttc)}</span>
-                          <div style={{display:"flex",gap:4}}>
-                            <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
-                            <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
-                          </div>
+                      {/* Recurring frais actifs */}
+                      {activeRecurrings.length>0&&(
+                        <>
+                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:"0 4px 6px",marginBottom:2}}>Récurrents</div>
+                          {activeRecurrings.map((r:any,i:number)=>(
+                            <div key={r.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:`1px solid #F2EFE9`}}>
+                              <span style={{fontSize:11,color:amber,fontWeight:600,letterSpacing:"0.3px"}}>Mensuel</span>
+                              <div style={{minWidth:0}}>
+                                <span style={{fontSize:13,fontWeight:500,color:text}}>{r.type}</span>
+                                {r.label&&<span style={{fontSize:12,color:text3}}> · {r.label}</span>}
+                              </div>
+                              <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(r.amount_ttc)}</span>
+                              <button onClick={()=>skipRecurringFrais(r.id)} style={{...sm(),background:"rgba(160,132,92,0.1)",color:amber}} title="Désactiver ce mois">⊘</button>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                      {/* Frais ponctuels */}
+                      {fraisMois.length>0&&(
+                        <>
+                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:"8px 4px 6px",marginTop:activeRecurrings.length>0?4:0}}>Ponctuels</div>
+                          {fraisMois.map((f:any,i:number)=>(
+                            <div key={f.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:i<fraisMois.length-1?`1px solid #F2EFE9`:"none"}}>
+                              <span style={{fontSize:13,color:text3}}>{f.date}</span>
+                              <div style={{minWidth:0}}>
+                                <span style={{fontSize:13,fontWeight:500,color:text}}>{f.type}</span>
+                                {f.label&&<span style={{fontSize:12,color:text3}}> · {f.label}</span>}
+                              </div>
+                              <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(f.amount_ttc)}</span>
+                              <div style={{display:"flex",gap:4}}>
+                                <button onClick={()=>{setEditItem(f);setModal("editFrais")}} style={sm()}>✏</button>
+                                <button onClick={()=>delFrais(f.id,f.month_key)} style={sm(true)}>✕</button>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                      {/* Récurrents désactivés ce mois */}
+                      {skippedRecurrings.length>0&&(
+                        <div style={{marginTop:10,padding:"10px 4px 0",borderTop:`1px dashed #E8E4DC`}}>
+                          <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:6}}>Désactivés ce mois</div>
+                          {skippedRecurrings.map((r:any)=>(
+                            <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",opacity:0.45}}>
+                              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                                <span style={{fontSize:13,color:text,textDecoration:"line-through"}}>{r.type}{r.label?` · ${r.label}`:""}</span>
+                              </div>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <span style={{fontSize:13,color:text3}}>{fmt(r.amount_ttc)}</span>
+                                <button onClick={()=>unskipRecurringFrais(r.id)} style={{...sm(),background:"rgba(91,123,106,0.1)",color:sage,opacity:1}} title="Réactiver ce mois">↺</button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                       <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
                         <span style={{fontSize:12,color:text3}}>Total TTC</span>
-                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalFraisMois)}</span>
+                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalFrais)}</span>
                       </div>
                     </div>
                   )}
@@ -1221,6 +1326,52 @@ export default function Home() {
           </div>
         )}
 
+        {/* ══ PRO — Frais récurrents ══ */}
+        {appMode==="pro"&&proTab==="pro-frais-recurrents"&&(()=>{
+          const totalMensuel=proRecurringFrais.reduce((s,r)=>s+Number(r.amount_ttc),0);
+          return (
+            <div style={{display:"flex",flexDirection:"column",gap:20}}>
+              <SectionHead
+                title="Frais récurrents"
+                sub={`${proRecurringFrais.length} frais · ${fmt(totalMensuel)} / mois`}
+                action={<button onClick={()=>setModal("addRecurringFrais")} style={btnP}>+ Ajouter</button>}
+              />
+              <div style={{background:"rgba(27,77,110,0.05)",borderRadius:12,padding:"14px 18px",fontSize:13,color:ocean,border:`1px solid rgba(27,77,110,0.12)`,lineHeight:1.6}}>
+                Ces frais s'appliquent automatiquement à chaque mois. Depuis <strong>Suivi mensuel</strong>, utilisez le bouton <strong>⊘</strong> pour en désactiver un pour un mois donné, et <strong>↺</strong> pour le réactiver.
+              </div>
+              {proRecurringFrais.length===0
+                ?<Empty label="Aucun frais récurrent défini"/>
+                :(
+                  <div style={{...card,padding:"22px"}}>
+                    <div style={{display:"flex",flexDirection:"column"}}>
+                      {proRecurringFrais.map((r,i)=>(
+                        <div key={r.id} className="row" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 4px",borderBottom:i<proRecurringFrais.length-1?`1px solid #F2EFE9`:"none"}}>
+                          <div>
+                            <div style={{fontSize:14,fontWeight:500,color:text}}>
+                              {r.type}
+                              {r.label&&<span style={{color:text3,fontWeight:400}}> · {r.label}</span>}
+                            </div>
+                            <div style={{fontSize:11,color:text3,marginTop:2}}>Mensuel · tous les mois</div>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:15,fontWeight:600,color:basque,marginRight:8}}>{fmt(r.amount_ttc)}</span>
+                            <button onClick={()=>{setEditItem(r);setModal("editRecurringFrais")}} style={iconBtn()}>✏</button>
+                            <button onClick={()=>delRecurringFrais(r.id)} style={iconBtn(true)}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{display:"flex",justifyContent:"space-between",paddingTop:10,marginTop:4,borderTop:`1px solid #F2EFE9`}}>
+                        <span style={{fontSize:12,color:text3}}>Total mensuel</span>
+                        <span style={{fontSize:15,fontWeight:600,color:basque}}>{fmt(totalMensuel)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+          );
+        })()}
+
         </div>{/* /inner content */}
       </div>{/* /content wrapper */}
 
@@ -1235,6 +1386,7 @@ export default function Home() {
       {(modal==="addExit"||modal==="editExit")&&<ExitForm initial={editItem} onSubmit={modal==="editExit"?editExit:addExit} onClose={closeModal} title={modal==="editExit"?"Modifier la sortie":"Nouvelle sortie"} defaultYear={year} defaultMk={mk}/>}
       {modal==="initBalance"&&<InitBalanceModal current={proTreasury} onSubmit={saveInitBal} onClose={closeModal}/>}
       {(modal==="addFrais"||modal==="editFrais")&&<FraisForm initial={editItem} onSubmit={modal==="editFrais"?editFrais:addFrais} onClose={closeModal} title={modal==="editFrais"?"Modifier le frais":"Nouveau frais"} fraisTypes={[...new Set([...FRAIS_TYPES,...proFrais.map((f:any)=>f.type).filter(Boolean)])]}/>}
+      {(modal==="addRecurringFrais"||modal==="editRecurringFrais")&&<RecurringFraisForm initial={editItem} onSubmit={modal==="editRecurringFrais"?editRecurringFrais:addRecurringFrais} onClose={closeModal} title={modal==="editRecurringFrais"?"Modifier le frais récurrent":"Nouveau frais récurrent"} fraisTypes={[...new Set([...FRAIS_TYPES,...proRecurringFrais.map((r:any)=>r.type).filter(Boolean)])]}/>}
     </div>
   );
 }
