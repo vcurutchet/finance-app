@@ -227,7 +227,8 @@ function RecurringFraisForm({initial,onSubmit,onClose,title,fraisTypes=[]}: any)
   const [type,setType]=useState(initial?.type||"");
   const [label,setLabel]=useState(initial?.label||"");
   const [amount,setAmt]=useState(initial?.amount_ttc||"");
-  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,label,amount_ttc:parseFloat(amount)})};
+  const [day,setDay]=useState(initial?.prelevement_day!=null?String(initial.prelevement_day):"");
+  const go=()=>{if(!type||!amount)return;onSubmit({...(initial||{}),type,label,amount_ttc:parseFloat(amount),prelevement_day:day?parseInt(day):null})};
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
@@ -236,7 +237,10 @@ function RecurringFraisForm({initial,onSubmit,onClose,title,fraisTypes=[]}: any)
           <datalist id="rec-frais-type-list">{fraisTypes.map((t:string)=><option key={t} value={t}/>)}</datalist>
         </Field>
         <Field label="Libellé"><input value={label} onChange={e=>setLabel(e.target.value)} placeholder="ex : Notion Pro" style={inp}/></Field>
-        <Field label="Montant TTC mensuel (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}>
+          <Field label="Montant TTC mensuel (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
+          <Field label="Jour de prélèvement"><input type="number" min="1" max="31" value={day} onChange={e=>setDay(e.target.value)} placeholder="ex : 5" style={inp}/></Field>
+        </div>
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -573,13 +577,13 @@ export default function Home() {
     loadProData();
   };
   const addRecurringFrais=async(i: any)=>{
-    const {error}=await supabase.from("pro_recurring_frais").insert({user_id:userId,type:i.type,label:i.label||"",amount_ttc:i.amount_ttc});
+    const {error}=await supabase.from("pro_recurring_frais").insert({user_id:userId,type:i.type,label:i.label||"",amount_ttc:i.amount_ttc,prelevement_day:i.prelevement_day??null});
     if(error){console.error("addRecurringFrais:",error.message);alert("Erreur: "+error.message);return;}
     await syncAllMonths();
     loadProData();setModal(null);
   };
   const editRecurringFrais=async(i: any)=>{
-    const {error}=await supabase.from("pro_recurring_frais").update({type:i.type,label:i.label||"",amount_ttc:i.amount_ttc}).eq("id",i.id);
+    const {error}=await supabase.from("pro_recurring_frais").update({type:i.type,label:i.label||"",amount_ttc:i.amount_ttc,prelevement_day:i.prelevement_day??null}).eq("id",i.id);
     if(error){console.error("editRecurringFrais:",error.message);alert("Erreur: "+error.message);return;}
     await syncAllMonths();
     loadProData();setModal(null);setEditItem(null);
@@ -1039,9 +1043,16 @@ export default function Home() {
                       {activeRecurrings.length>0&&(
                         <>
                           <div style={{fontSize:10,color:text3,fontWeight:700,letterSpacing:"0.6px",textTransform:"uppercase",padding:"0 4px 6px",marginBottom:2}}>Récurrents</div>
-                          {activeRecurrings.map((r:any,i:number)=>(
+                          {activeRecurrings.map((r:any,i:number)=>{
+                            const dateStr=r.prelevement_day?`${year}-${String(month+1).padStart(2,"0")}-${String(r.prelevement_day).padStart(2,"0")}`:null;
+                            return (
                             <div key={r.id} className="row" style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:"0 12px",alignItems:"center",padding:"9px 4px",borderBottom:`1px solid #F2EFE9`}}>
-                              <span style={{fontSize:11,color:amber,fontWeight:600,letterSpacing:"0.3px"}}>Mensuel</span>
+                              <div>
+                                {dateStr
+                                  ?<span style={{fontSize:13,color:text3}}>{dateStr}</span>
+                                  :<span style={{fontSize:11,color:amber,fontWeight:600,letterSpacing:"0.3px"}}>Mensuel</span>
+                                }
+                              </div>
                               <div style={{minWidth:0}}>
                                 <span style={{fontSize:13,fontWeight:500,color:text}}>{r.type}</span>
                                 {r.label&&<span style={{fontSize:12,color:text3}}> · {r.label}</span>}
@@ -1049,7 +1060,8 @@ export default function Home() {
                               <span style={{fontSize:13,fontWeight:600,color:basque,textAlign:"right"}}>{fmt(r.amount_ttc)}</span>
                               <button onClick={()=>skipRecurringFrais(r.id)} style={{...sm(),background:"rgba(160,132,92,0.1)",color:amber}} title="Désactiver ce mois">⊘</button>
                             </div>
-                          ))}
+                            );
+                          })}
                         </>
                       )}
                       {/* Frais ponctuels */}
@@ -1351,7 +1363,9 @@ export default function Home() {
                               {r.type}
                               {r.label&&<span style={{color:text3,fontWeight:400}}> · {r.label}</span>}
                             </div>
-                            <div style={{fontSize:11,color:text3,marginTop:2}}>Mensuel · tous les mois</div>
+                            <div style={{fontSize:11,color:text3,marginTop:2}}>
+                              {r.prelevement_day?`Prélèvement le ${r.prelevement_day} de chaque mois`:"Mensuel · tous les mois"}
+                            </div>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
                             <span style={{fontSize:15,fontWeight:600,color:basque,marginRight:8}}>{fmt(r.amount_ttc)}</span>
