@@ -497,6 +497,7 @@ export default function Home() {
   const buildAnnual=(filterExercise: boolean)=>{
     const initBal=filterExercise?0:(proTreasury?.initial_balance||0);
     let cum=initBal;
+    let cumReelle=0;
     return Array.from({length:12},(_,i)=>{
       const k=monthKey(year,i);
       const ents=allEntries.filter(e=>e.month_key===k&&(!filterExercise||!e.exercise_year||e.exercise_year===year));
@@ -523,9 +524,13 @@ export default function Home() {
       const is=Math.max(0,benefice*0.15);
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC/1.2-(totalSorties-tvaReelle);
+      const diffCharge=salaire?(chargesCalc-chargesPay):0;
+      const aConserver=diffCharge+is;
+      const tresoReelleMois=tresoMois-aConserver;
       cum+=tresoMois;
+      cumReelle+=tresoReelleMois;
       const hasData=filterExercise?(caTTC>0||exts.length>0):(ents.length>0||exts.length>0);
-      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,isReel,tresoMois,tresoTotale:cum,hasData};
+      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,diffCharge,totalDepenses,benefice,is,isReel,aConserver,tresoMois,tresoReelleMois,tresoReelleCum:cumReelle,tresoTotale:cum,hasData};
     });
   };
   // Bilan annuel : filtré par exercice comptable, CA = facturé (pro_forecast.ca_declare)
@@ -928,7 +933,7 @@ export default function Home() {
         {/* ══ PRO — Suivi mensuel ══ */}
         {appMode==="pro"&&proTab==="pro-mouvements"&&(()=>{
           const caMois=proForecast.find((f:any)=>f.month_key===mk)?.ca_declare||0;
-          const tresoMois=proAnnual[month]?.tresoTotale||0;
+          const tresoMois=proAnnual[month]?.tresoReelleCum||0;
           const fraisAutoAmt=proExits.find((e:any)=>e.label==="__frais_auto__")?.amount||0;
           const rowLine=(label:string,val:number,color:string)=>(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:`1px solid ${border}`}}>
@@ -1227,31 +1232,33 @@ export default function Home() {
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — CA facturé, charges imputées"/>
             <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:1160}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:1240}}>
                 <thead>
                   <tr style={{background:"#F7F5F0"}}>
                     {[
-                      {h:"Mois",          w:72,  note:""},
-                      {h:"CA Facturé",    w:100, note:"déclaré"},
-                      {h:"TVA calc.",     w:90,  note:"÷ 6"},
-                      {h:"Frais pro",     w:90,  note:""},
-                      {h:"Salaire",       w:90,  note:""},
-                      {h:"PER / AV",      w:90,  note:""},
-                      {h:"Charges pay.",  w:96,  note:"payées"},
-                      {h:"Charges calc.", w:96,  note:"45%"},
-                      {h:"Diff. charge",  w:96,  note:"calc − payé"},
-                      {h:"Tot. dép.",     w:90,  note:"HT"},
-                      {h:"IS calc.",      w:85,  note:"15%"},
-                      {h:"À conserver",   w:100, note:"charges + IS"},
-                      {h:"Tréso mois",    w:100, note:""},
-                      {h:"Tréso tot.",    w:100, note:"cumulé"},
-                      {h:"Tréso réelle",  w:110, note:"disponible"},
-                    ].map((h,i)=>(
-                      <th key={i} style={{padding:"12px 10px",textAlign:i===0?"left":"right",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:h.w,minWidth:h.w,borderBottom:`1px solid ${border}`}}>
-                        {h.h}
-                        {h.note&&<span style={{display:"block",fontSize:10,fontWeight:400,color:text3,textTransform:"none",letterSpacing:0}}>{h.note}</span>}
-                      </th>
-                    ))}
+                      {h:"Mois",           w:72,  note:"",             grp:""},
+                      {h:"CA Facturé",     w:100, note:"déclaré",      grp:"rev"},
+                      {h:"TVA calc.",      w:90,  note:"÷ 6",          grp:"info"},
+                      {h:"Frais Pro",      w:90,  note:"",             grp:"cost"},
+                      {h:"Salaire",        w:90,  note:"",             grp:"cost"},
+                      {h:"PER / AV",       w:90,  note:"",             grp:"cost"},
+                      {h:"Ch. payées",     w:96,  note:"réelles",      grp:"cost"},
+                      {h:"Ch. calc.",      w:90,  note:"45%",          grp:"cost"},
+                      {h:"Diff. charges",  w:96,  note:"calc − payé",  grp:"cost"},
+                      {h:"Tot. dépenses",  w:96,  note:"HT",           grp:"cost"},
+                      {h:"IS calc.",       w:85,  note:"15%",          grp:"fisc"},
+                      {h:"À conserver",    w:100, note:"diff + IS",    grp:"fisc"},
+                      {h:"Bénéfice mois",  w:110, note:"",             grp:"res"},
+                      {h:"Tréso réelle",   w:110, note:"cumulé",       grp:"res"},
+                    ].map((h,i)=>{
+                      const accent=h.grp==="rev"?ocean:h.grp==="cost"?basque:h.grp==="fisc"?amber:h.grp==="res"?sage:"transparent";
+                      return (
+                        <th key={i} style={{padding:"12px 10px",textAlign:i===0?"left":"right",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:h.w,minWidth:h.w,borderBottom:`1px solid ${border}`,borderTop:`3px solid ${accent}`}}>
+                          {h.h}
+                          {h.note&&<span style={{display:"block",fontSize:10,fontWeight:400,color:text3,textTransform:"none",letterSpacing:0}}>{h.note}</span>}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1262,27 +1269,21 @@ export default function Home() {
                     return (
                       <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:isCurrent?"rgba(27,77,110,0.04)":"transparent",opacity:dim?0.35:1}}>
                         <td style={{padding:"12px 10px",fontWeight:isCurrent?700:500,color:isCurrent?ocean:text,fontSize:13}}>{row.label}</td>
-                        {(()=>{
-                          const diffCharge=row.salaire?(row.chargesCalc-row.chargesPay):0;
-                          const aConserver=diffCharge+row.is;
-                          const tresoReelle=row.tresoTotale-aConserver;
-                          return [
-                            {v:row.caTTC,     c:row.caTTC?ocean:text3},
-                            {v:row.tvaCalc,   c:text2},
-                            {v:row.frais,     c:row.frais?basque:text3},
-                            {v:row.salaire,   c:row.salaire?text:text3},
-                            {v:row.per,       c:row.per?amber:text3},
-                            {v:row.chargesPay,c:row.chargesPay?basque:text3},
-                            {v:row.chargesCalc,c:text2, italic:true},
-                            {v:diffCharge,    c:diffCharge>0?amber:sage, bold:true},
-                            {v:row.totalDepenses,c:row.totalDepenses?basque:text3},
-                            {v:row.is,        c:row.is?basque:text3, italic:true},
-                            {v:aConserver,    c:aConserver>0?amber:sage, bold:true},
-                            {v:row.tresoMois, c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
-                            {v:row.tresoTotale,c:row.tresoTotale>0?ocean:basque, bold:true},
-                            {v:tresoReelle,   c:tresoReelle>0?ocean:basque, bold:true},
-                          ];
-                        })().map((cell,j)=>(
+                        {[
+                          {v:row.caTTC,         c:row.caTTC>0?ocean:text3},
+                          {v:row.tvaCalc,        c:text2},
+                          {v:row.frais,          c:row.frais>0?basque:text3},
+                          {v:row.salaire,        c:row.salaire>0?text:text3},
+                          {v:row.per,            c:row.per>0?amber:text3},
+                          {v:row.chargesPay,     c:row.chargesPay>0?basque:text3},
+                          {v:row.chargesCalc,    c:text2, italic:true},
+                          {v:row.diffCharge,     c:row.diffCharge>0?amber:row.diffCharge<0?sage:text3},
+                          {v:row.totalDepenses,  c:row.totalDepenses>0?basque:text3},
+                          {v:row.is,             c:row.is>0?basque:text3},
+                          {v:row.aConserver,     c:row.aConserver>0?amber:row.aConserver<0?sage:text3, bold:true},
+                          {v:row.tresoMois,      c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
+                          {v:row.tresoReelleCum, c:row.tresoReelleCum>0?ocean:row.tresoReelleCum<0?basque:text3, bold:true},
+                        ].map((cell,j)=>(
                           <td key={j} style={{padding:"12px 10px",textAlign:"right",fontWeight:cell.bold?600:400,color:cell.v===0&&!cell.bold?text3:cell.c,fontStyle:cell.italic?"italic":"normal"}}>
                             {cell.v!==0?fmt(cell.v):<span style={{color:text3,opacity:0.3}}>—</span>}
                           </td>
@@ -1290,7 +1291,6 @@ export default function Home() {
                       </tr>
                     );
                   })}
-                  {/* Total row */}
                   {(()=>{
                     const T=(fn: (r: typeof proAnnual[0])=>number)=>proAnnual.reduce((s,r)=>s+fn(r),0);
                     const cols=[
@@ -1301,13 +1301,12 @@ export default function Home() {
                       T(r=>r.per),
                       T(r=>r.chargesPay),
                       T(r=>r.chargesCalc),
-                      T(r=>r.salaire?(r.chargesCalc-r.chargesPay):0),
+                      T(r=>r.diffCharge),
                       T(r=>r.totalDepenses),
                       T(r=>r.is),
-                      T(r=>{const d=r.salaire?(r.chargesCalc-r.chargesPay):0;return d+r.is;}),
+                      T(r=>r.aConserver),
                       T(r=>r.tresoMois),
-                      proAnnual[11]?.tresoTotale||0,
-                      (()=>{const r=proAnnual[11];if(!r)return 0;const d=r.salaire?(r.chargesCalc-r.chargesPay):0;return r.tresoTotale-(d+r.is);})(),
+                      proAnnual[11]?.tresoReelleCum||0,
                     ];
                     return (
                       <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
@@ -1322,7 +1321,7 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées)
+              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver)
             </p>
           </div>
         )}
