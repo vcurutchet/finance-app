@@ -489,7 +489,7 @@ export default function Home() {
     const divers=bycat("Divers");
     const isReel=bycat("Impôt société");
     const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
-    const benefice=totalEntrees/1.2-frais-chargesPay-salaire;
+    const benefice=totalEntrees/1.2-frais-salaire-per-chargesCalc;
     return {totalEntrees,totalSorties,netMois:totalEntrees-totalSorties,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is:Math.max(0,benefice*0.15)};
   },[proEntries,proExits]);
 
@@ -519,7 +519,7 @@ export default function Home() {
       const divers=bycat("Divers");
       const isReel=bycat("Impôt société");
       const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
-      const benefice=caTTC/1.2-frais-chargesPay-salaire;
+      const benefice=caTTC/1.2-frais-salaire-per-chargesCalc;
       const is=Math.max(0,benefice*0.15);
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC-totalSorties;
@@ -1322,7 +1322,7 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Charges payées − Salaire)
+              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges calc.)
             </p>
           </div>
         )}
