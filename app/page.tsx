@@ -522,7 +522,7 @@ export default function Home() {
       const benefice=caTTC/1.2-frais-salaire-per-chargesPay;
       const is=Math.max(0,benefice*0.15);
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
-      const tresoMois=caTTC-totalSorties;
+      const tresoMois=caTTC/1.2-(totalSorties-tvaReelle);
       cum+=tresoMois;
       const hasData=filterExercise?(caTTC>0||exts.length>0):(ents.length>0||exts.length>0);
       return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,totalDepenses,benefice,is,isReel,tresoMois,tresoTotale:cum,hasData};
