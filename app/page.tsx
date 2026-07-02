@@ -451,6 +451,12 @@ export default function Home() {
     loadPrefs();loadData();loadProData();
   },[userId,mk]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync initial : aligne les salaires pro → revenus perso pour toute l'année
+  useEffect(()=>{
+    if(!userId)return;
+    Promise.all(Array.from({length:12},(_,i)=>syncSalaireIncome(monthKey(year,i)))).then(()=>loadData());
+  },[userId,year]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(()=>{
     const fc=proForecast.find((f:any)=>f.month_key===mk);
     setCaDeclareDraft(fc?.ca_declare?String(fc.ca_declare):"");
