@@ -565,9 +565,9 @@ export default function Home() {
     loadProData();setModal(null);setEditItem(null);
   };
   const delEntry    = async(id: string)=>{await supabase.from("pro_entries").delete().eq("id",id);loadProData()};
-  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||mk});loadProData();setModal(null)};
-  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||i.month_key}).eq("id",i.id);loadProData();setModal(null);setEditItem(null)};
-  const delExit     = async(id: string)=>{await supabase.from("pro_exits").delete().eq("id",id);loadProData()};
+  const addExit     = async(i: any)=>{await supabase.from("pro_exits").insert({user_id:userId,month_key:mk,category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||mk});await syncSalaireIncome(i.month_key||mk);loadProData();loadData();setModal(null)};
+  const editExit    = async(i: any)=>{await supabase.from("pro_exits").update({category:i.category,label:i.label,amount:i.amount,date:i.date,exercise_year:i.exercise_year,imputation_month_key:i.imputation_month_key||i.month_key}).eq("id",i.id);await syncSalaireIncome(mk);loadProData();loadData();setModal(null);setEditItem(null)};
+  const delExit     = async(id: string)=>{await supabase.from("pro_exits").delete().eq("id",id);await syncSalaireIncome(mk);loadProData();loadData()};
   const saveInitBal = async(bal: number)=>{
     await supabase.from("pro_treasury").upsert({user_id:userId,initial_balance:bal,balance:bal,alert_threshold:proTreasury?.alert_threshold||0},{onConflict:"user_id"});
     loadProData();setModal(null);
@@ -599,6 +599,13 @@ export default function Home() {
   };
   const syncAllMonths=async()=>{
     await Promise.all(Array.from({length:12},(_,i)=>monthKey(year,i)).map(k=>syncFraisExit(k)));
+  };
+  const syncSalaireIncome=async(targetMk: string)=>{
+    if(!userId)return;
+    const {data}=await supabase.from("pro_exits").select("amount").eq("user_id",userId).eq("month_key",targetMk).eq("category","Salaire");
+    const total=(data||[]).reduce((s:number,e:any)=>s+Number(e.amount),0);
+    await supabase.from("income").delete().eq("user_id",userId).eq("month_key",targetMk).eq("type","__salary_auto__");
+    if(total>0) await supabase.from("income").insert({user_id:userId,month_key:targetMk,type:"__salary_auto__",amount:total});
   };
   const addFrais=async(i: any)=>{
     const {error}=await supabase.from("pro_frais").insert({user_id:userId,month_key:mk,type:i.type,label:i.label||"",amount_ttc:i.amount_ttc,date:i.date});
@@ -833,19 +840,27 @@ export default function Home() {
             <SectionHead title="Revenus" sub={`${MONTHS_FR[month]} ${year} · Total : ${fmt(persoC.budget)}`} action={<button onClick={()=>setModal("addIncome")} style={btnP}>+ Ajouter</button>}/>
             {incomes.length===0?<Empty label="Aucun revenu ce mois"/>:
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {incomes.map(inc=>(
-                  <div key={inc.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{width:3,height:28,borderRadius:2,background:sage,flexShrink:0}}/>
-                      <span style={{fontSize:15,fontWeight:500,color:text}}>{inc.type}</span>
+                {incomes.map(inc=>{
+                  const isAuto=inc.type==="__salary_auto__";
+                  return (
+                    <div key={inc.id} className={isAuto?"":"row"} style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",borderLeft:isAuto?`3px solid ${ocean}`:"none"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:14}}>
+                        <div style={{width:3,height:28,borderRadius:2,background:isAuto?ocean:sage,flexShrink:0}}/>
+                        <div>
+                          <span style={{fontSize:15,fontWeight:500,color:text}}>{isAuto?"Salaire pro":inc.type}</span>
+                          {isAuto&&<span style={{marginLeft:8,fontSize:10,fontWeight:700,letterSpacing:"0.5px",color:ocean,background:"rgba(27,77,110,0.1)",borderRadius:4,padding:"2px 6px"}}>SYNC PRO</span>}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:16,fontWeight:600,color:sage,marginRight:8}}>{fmt(inc.amount)}</span>
+                        {!isAuto&&<>
+                          <button onClick={()=>{setEditItem(inc);setModal("editIncome")}} style={iconBtn()}>✏</button>
+                          <button onClick={()=>delIncome(inc.id)} style={iconBtn(true)}>✕</button>
+                        </>}
+                      </div>
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:16,fontWeight:600,color:sage,marginRight:8}}>{fmt(inc.amount)}</span>
-                      <button onClick={()=>{setEditItem(inc);setModal("editIncome")}} style={iconBtn()}>✏</button>
-                      <button onClick={()=>delIncome(inc.id)} style={iconBtn(true)}>✕</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             }
           </div>
