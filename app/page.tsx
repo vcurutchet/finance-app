@@ -400,11 +400,12 @@ export default function Home() {
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
   const [caDeclareDraft,setCaDeclareDraft] = useState<string>("");
-  const [simCA,setSimCA]               = useState<string>("");
-  const [simFrais,setSimFrais]         = useState<string>("");
-  const [simSalaire,setSimSalaire]     = useState<string>("");
-  const [simPer,setSimPer]             = useState<string>("");
-  const [simChargesPay,setSimChargesPay] = useState<string>("");
+  const SIM_DEFAULTS = {ca:"9630",frais:"2000",salaire:"3600",per:"442",chargesPay:"1800"};
+  const [simCA,setSimCA]               = useState<string>(SIM_DEFAULTS.ca);
+  const [simFrais,setSimFrais]         = useState<string>(SIM_DEFAULTS.frais);
+  const [simSalaire,setSimSalaire]     = useState<string>(SIM_DEFAULTS.salaire);
+  const [simPer,setSimPer]             = useState<string>(SIM_DEFAULTS.per);
+  const [simChargesPay,setSimChargesPay] = useState<string>(SIM_DEFAULTS.chargesPay);
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
   const [fraisColorOverrides,setFraisColorOverrides] = useState<Record<string,string>>(()=>{
     try{return JSON.parse(localStorage.getItem("fraisColors")||"{}")}catch{return{}}
@@ -1615,7 +1616,7 @@ export default function Home() {
           return (
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <SectionHead title="Simulateur de revenu" sub="Projection libre pour un mois donné — n'affecte pas vos données réelles" action={
-              <button onClick={()=>{setSimCA("");setSimFrais("");setSimSalaire("");setSimPer("");setSimChargesPay("")}} style={{...btnG,fontSize:12,padding:"8px 16px"}}>Réinitialiser</button>
+              <button onClick={()=>{setSimCA(SIM_DEFAULTS.ca);setSimFrais(SIM_DEFAULTS.frais);setSimSalaire(SIM_DEFAULTS.salaire);setSimPer(SIM_DEFAULTS.per);setSimChargesPay(SIM_DEFAULTS.chargesPay)}} style={{...btnG,fontSize:12,padding:"8px 16px"}}>Réinitialiser</button>
             }/>
             <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20,alignItems:"start"}}>
               {/* Paramètres */}
