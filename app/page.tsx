@@ -474,9 +474,11 @@ export default function Home() {
     const totalOneTime=expenses.reduce((s,e)=>s+Number(e.amount),0);
     const totalSpent=totalRecurring+totalOneTime;
     const totalSavings=savings.reduce((s,e)=>s+Number(e.amount),0);
-    const budget=incomes.reduce((s,i)=>s+Number(i.amount),0);
-    return {totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent};
-  },[recurring,expenses,incomes,savings]);
+    const manualIncomes=incomes.filter((i:any)=>i.type!=="__salary_auto__");
+    const salaireAuto=allExits.filter((e:any)=>e.month_key===mk&&e.category==="Salaire").reduce((s:number,e:any)=>s+Number(e.amount),0);
+    const budget=manualIncomes.reduce((s:number,i:any)=>s+Number(i.amount),0)+salaireAuto;
+    return {totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent,salaireAuto,manualIncomes};
+  },[recurring,expenses,incomes,savings,allExits,mk]);
 
   // Pro monthly computed
   const proC=useMemo(()=>{
@@ -533,10 +535,11 @@ export default function Home() {
       const diffCharge=salaire?(chargesCalc-chargesPay):0;
       const aConserver=diffCharge+is;
       const tresoReelleMois=tresoMois-aConserver;
+      const tresoMensuelle=benefice-aConserver;
       cum+=tresoMois;
       cumReelle+=tresoReelleMois;
       const hasData=filterExercise?(caTTC>0||exts.length>0):(ents.length>0||exts.length>0);
-      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,diffCharge,totalDepenses,benefice,is,isReel,aConserver,tresoMois,tresoReelleMois,tresoReelleCum:cumReelle,tresoTotale:cum,hasData};
+      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,diffCharge,totalDepenses,benefice,is,isReel,aConserver,tresoMois,tresoReelleMois,tresoMensuelle,tresoReelleCum:cumReelle,tresoTotale:cum,hasData};
     });
   };
   // Bilan annuel : filtré par exercice comptable, CA = facturé (pro_forecast.ca_declare)
@@ -781,10 +784,16 @@ export default function Home() {
                 <h3 style={{margin:0,fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Revenus de {MONTHS_FR[month]}</h3>
                 <button onClick={()=>setTab("income")} style={{background:"none",border:"none",color:ocean,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,padding:0}}>Gérer les revenus →</button>
               </div>
-              {incomes.length===0?<p style={{margin:0,fontSize:14,color:text3}}>Aucun revenu enregistré ce mois-ci.</p>:
+              {persoC.salaireAuto===0&&persoC.manualIncomes.length===0?<p style={{margin:0,fontSize:14,color:text3}}>Aucun revenu enregistré ce mois-ci.</p>:
                 <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                  {incomes.map((inc,i)=>(
-                    <div key={inc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:i<incomes.length-1?`1px solid #F2EFE9`:"none"}}>
+                  {persoC.salaireAuto>0&&(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:(persoC.manualIncomes.length>0)?`1px solid #F2EFE9`:"none"}}>
+                      <span style={{fontSize:14,color:ocean,fontWeight:500}}>Salaire pro <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.5px",color:ocean,background:"rgba(27,77,110,0.1)",borderRadius:4,padding:"2px 5px",marginLeft:6}}>SYNC</span></span>
+                      <span style={{fontSize:15,fontWeight:600,color:sage}}>{fmt(persoC.salaireAuto)}</span>
+                    </div>
+                  )}
+                  {persoC.manualIncomes.map((inc:any,i:number)=>(
+                    <div key={inc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:i<persoC.manualIncomes.length-1?`1px solid #F2EFE9`:"none"}}>
                       <span style={{fontSize:14,color:text2}}>{inc.type}</span>
                       <span style={{fontSize:15,fontWeight:600,color:sage}}>{fmt(inc.amount)}</span>
                     </div>
@@ -844,29 +853,33 @@ export default function Home() {
         {appMode==="perso"&&tab==="income"&&(
           <div>
             <SectionHead title="Revenus" sub={`${MONTHS_FR[month]} ${year} · Total : ${fmt(persoC.budget)}`} action={<button onClick={()=>setModal("addIncome")} style={btnP}>+ Ajouter</button>}/>
-            {incomes.length===0?<Empty label="Aucun revenu ce mois"/>:
+            {persoC.salaireAuto===0&&persoC.manualIncomes.length===0?<Empty label="Aucun revenu ce mois"/>:
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {incomes.map(inc=>{
-                  const isAuto=inc.type==="__salary_auto__";
-                  return (
-                    <div key={inc.id} className={isAuto?"":"row"} style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",borderLeft:isAuto?`3px solid ${ocean}`:"none"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{width:3,height:28,borderRadius:2,background:isAuto?ocean:sage,flexShrink:0}}/>
-                        <div>
-                          <span style={{fontSize:15,fontWeight:500,color:text}}>{isAuto?"Salaire pro":inc.type}</span>
-                          {isAuto&&<span style={{marginLeft:8,fontSize:10,fontWeight:700,letterSpacing:"0.5px",color:ocean,background:"rgba(27,77,110,0.1)",borderRadius:4,padding:"2px 6px"}}>SYNC PRO</span>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:16,fontWeight:600,color:sage,marginRight:8}}>{fmt(inc.amount)}</span>
-                        {!isAuto&&<>
-                          <button onClick={()=>{setEditItem(inc);setModal("editIncome")}} style={iconBtn()}>✏</button>
-                          <button onClick={()=>delIncome(inc.id)} style={iconBtn(true)}>✕</button>
-                        </>}
+                {persoC.salaireAuto>0&&(
+                  <div style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",borderLeft:`3px solid ${ocean}`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{width:3,height:28,borderRadius:2,background:ocean,flexShrink:0}}/>
+                      <div>
+                        <span style={{fontSize:15,fontWeight:500,color:text}}>Salaire pro</span>
+                        <span style={{marginLeft:8,fontSize:10,fontWeight:700,letterSpacing:"0.5px",color:ocean,background:"rgba(27,77,110,0.1)",borderRadius:4,padding:"2px 6px"}}>SYNC PRO</span>
                       </div>
                     </div>
-                  );
-                })}
+                    <span style={{fontSize:16,fontWeight:600,color:sage}}>{fmt(persoC.salaireAuto)}</span>
+                  </div>
+                )}
+                {persoC.manualIncomes.map((inc:any)=>(
+                  <div key={inc.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{width:3,height:28,borderRadius:2,background:sage,flexShrink:0}}/>
+                      <span style={{fontSize:15,fontWeight:500,color:text}}>{inc.type}</span>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:16,fontWeight:600,color:sage,marginRight:8}}>{fmt(inc.amount)}</span>
+                      <button onClick={()=>{setEditItem(inc);setModal("editIncome")}} style={iconBtn()}>✏</button>
+                      <button onClick={()=>delIncome(inc.id)} style={iconBtn(true)}>✕</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             }
           </div>
@@ -1270,6 +1283,7 @@ export default function Home() {
                       {h:"IS calc.",       w:85,  note:"15%",          grp:"fisc"},
                       {h:"À conserver",    w:100, note:"diff + IS",    grp:"fisc"},
                       {h:"Bénéfice mois",  w:110, note:"",             grp:"res"},
+                      {h:"Tréso mensuelle",w:110, note:"bénéf. − à conserver", grp:"res"},
                       {h:"Tréso réelle",   w:110, note:"cumulé",       grp:"res"},
                     ].map((h,i)=>{
                       const accent=h.grp==="rev"?ocean:h.grp==="cost"?basque:h.grp==="fisc"?amber:h.grp==="res"?sage:"transparent";
@@ -1303,6 +1317,7 @@ export default function Home() {
                           {v:row.is,             c:row.is>0?basque:text3},
                           {v:row.aConserver,     c:row.aConserver>0?amber:row.aConserver<0?sage:text3, bold:true},
                           {v:row.tresoMois,      c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
+                          {v:row.tresoMensuelle, c:row.tresoMensuelle>0?sage:row.tresoMensuelle<0?basque:text3, bold:true},
                           {v:row.tresoReelleCum, c:row.tresoReelleCum>0?ocean:row.tresoReelleCum<0?basque:text3, bold:true},
                         ].map((cell,j)=>(
                           <td key={j} style={{padding:"12px 10px",textAlign:"right",fontWeight:cell.bold?600:400,color:cell.v===0&&!cell.bold?text3:cell.c,fontStyle:cell.italic?"italic":"normal"}}>
