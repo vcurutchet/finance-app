@@ -25,7 +25,7 @@ const text="#111827", text2="#4B5563", text3="#9CA3AF", border="#E5E7EB";
 const negative="#DC2626";
 const serif="'DM Serif Display',serif";
 
-type BilanColKind="revenue"|"decision"|"result"|"calc"|"neutral";
+type BilanColKind="revenue"|"decision"|"result"|"calc"|"neutral"|"diffCharge";
 type BilanColKey="caTTC"|"tvaCalc"|"frais"|"salaire"|"per"|"chargesPay"|"chargesCalc"|"diffCharge"|"totalDepenses"|"is"|"aConserver"|"tresoMois"|"tresoMensuelle"|"tresoReelleCum";
 const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKind}[] = [
   {key:"caTTC",         h:"CA Facturé",     note:"déclaré",             w:100, kind:"revenue"},
@@ -35,7 +35,7 @@ const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKi
   {key:"per",            h:"PER / AV",       note:"",                    w:90,  kind:"neutral"},
   {key:"chargesPay",     h:"Ch. payées",     note:"réelles",             w:96,  kind:"neutral"},
   {key:"chargesCalc",    h:"Ch. calc.",      note:"45%",                 w:90,  kind:"calc"},
-  {key:"diffCharge",     h:"Diff. charges",  note:"calc − payé",         w:96,  kind:"neutral"},
+  {key:"diffCharge",     h:"Diff. charges",  note:"calc − payé",         w:96,  kind:"diffCharge"},
   {key:"totalDepenses",  h:"Tot. dépenses",  note:"HT",                  w:96,  kind:"neutral"},
   {key:"is",             h:"IS calc.",       note:"15%",                 w:85,  kind:"calc"},
   {key:"aConserver",     h:"À conserver",    note:"diff + IS",           w:100, kind:"decision"},
@@ -45,6 +45,7 @@ const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKi
 ];
 const BILAN_COLS_SIMPLE: BilanColKey[] = ["caTTC","totalDepenses","tresoMois","tresoReelleCum"];
 const bilanCellColor=(kind:BilanColKind,v:number)=>{
+  if(kind==="diffCharge") return v===0?text3:v<0?sage:basque;
   if(v<0) return negative;
   if(v===0) return text3;
   if(kind==="revenue"||kind==="decision") return ocean;
@@ -399,6 +400,11 @@ export default function Home() {
   const [modal,setModal]       = useState<string|null>(null);
   const [editItem,setEditItem] = useState<any>(null);
   const [caDeclareDraft,setCaDeclareDraft] = useState<string>("");
+  const [simCA,setSimCA]               = useState<string>("");
+  const [simFrais,setSimFrais]         = useState<string>("");
+  const [simSalaire,setSimSalaire]     = useState<string>("");
+  const [simPer,setSimPer]             = useState<string>("");
+  const [simChargesPay,setSimChargesPay] = useState<string>("");
   const [appMode,setAppMode]   = useState<"perso"|"pro">("perso");
   const [fraisColorOverrides,setFraisColorOverrides] = useState<Record<string,string>>(()=>{
     try{return JSON.parse(localStorage.getItem("fraisColors")||"{}")}catch{return{}}
@@ -580,6 +586,24 @@ export default function Home() {
   // Trésorerie : tous les mouvements réels (sans filtre exercice)
   const proTresoAnnual=useMemo(()=>buildAnnual(false),[allEntries,allExits,proTreasury,year]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Simulateur : projection libre, indépendante des données réelles
+  const sim=useMemo(()=>{
+    const ca=parseFloat(simCA)||0;
+    const frais=parseFloat(simFrais)||0;
+    const salaire=parseFloat(simSalaire)||0;
+    const per=parseFloat(simPer)||0;
+    const chargesPay=parseFloat(simChargesPay)||0;
+    const tvaCalc=ca/6;
+    const chargesCalc=0.45*(salaire+per);
+    const diffCharge=chargesCalc-chargesPay;
+    const totalDepenses=frais+salaire+per+chargesPay;
+    const benefice=ca/1.2-frais-salaire-per-chargesPay;
+    const is=Math.max(0,benefice*0.15);
+    const aConserver=diffCharge+is;
+    const tresoMensuelle=benefice-aConserver;
+    return {ca,frais,salaire,per,chargesPay,tvaCalc,chargesCalc,diffCharge,totalDepenses,benefice,is,aConserver,tresoMensuelle};
+  },[simCA,simFrais,simSalaire,simPer,simChargesPay]);
+
 
   // ─── Perso CRUD ───
   const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category});loadData();setModal(null)};
@@ -716,6 +740,7 @@ export default function Home() {
     {id:"pro-annual",           label:"Bilan annuel"},
     {id:"pro-tresorerie",       label:"Trésorerie"},
     {id:"pro-frais-recurrents", label:"Frais récurrents"},
+    {id:"pro-simulateur",       label:"Simulateur"},
   ];
   const activeTabs   = appMode==="perso"?persoTabs:proTabs;
   const activeTab    = appMode==="perso"?tab:proTab;
@@ -789,6 +814,7 @@ export default function Home() {
               {id:"pro-annual",           label:"Bilan annuel"},
               {id:"pro-tresorerie",       label:"Trésorerie"},
               {id:"pro-frais-recurrents", label:"Frais récurrents"},
+              {id:"pro-simulateur",       label:"Simulateur"},
             ].map(item=>(
               <button key={item.id} onClick={()=>setProTab(item.id)} style={{display:"block",width:"100%",textAlign:"left",padding:"12px 20px",border:"none",borderLeft:`3px solid ${proTab===item.id?ocean:"transparent"}`,background:proTab===item.id?"rgba(27,77,110,0.06)":"transparent",color:proTab===item.id?ocean:text2,fontWeight:proTab===item.id?600:400,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all 0.12s"}}>
                 {item.label}
@@ -1361,7 +1387,7 @@ export default function Home() {
                         <td style={{padding:"14px 10px",fontWeight:700,fontSize:14,color:text,position:"sticky",bottom:0,background:"#EDEBE4"}}>Total</td>
                         {bilanCols.map(c=>{
                           const v=c.key==="tresoReelleCum"?(proAnnual[11]?.tresoReelleCum||0):T(c.key);
-                          const color=v<0?negative:v===0?text3:(c.kind==="revenue"||c.kind==="decision")?ocean:c.kind==="result"?text:c.kind==="calc"?amber:text2;
+                          const color=bilanCellColor(c.kind,v);
                           return (
                             <td key={c.key} style={{padding:"14px 10px",textAlign:"right",fontWeight:700,fontSize:14,color,position:"sticky",bottom:0,background:"#EDEBE4"}}>
                               {v?fmt(v):"—"}
@@ -1375,7 +1401,7 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver)
+              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver) &nbsp;·&nbsp; Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler
             </p>
           </div>
           );
@@ -1556,6 +1582,73 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          );
+        })()}
+
+        {/* ══ PRO — Simulateur ══ */}
+        {appMode==="pro"&&proTab==="pro-simulateur"&&(()=>{
+          const numInput=(label:string,value:string,setValue:(v:string)=>void)=>(
+            <div>
+              <label style={{display:"block",fontSize:12,color:text2,fontWeight:600,marginBottom:6}}>{label}</label>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0" style={{...inp,textAlign:"right"}}/>
+                <span style={{fontSize:13,color:text3}}>€</span>
+              </div>
+            </div>
+          );
+          const resultRow=(label:string,key:keyof typeof sim,kind:BilanColKind,note?:string,last?:boolean)=>{
+            const v=(sim as any)[key];
+            const color=bilanCellColor(kind,v);
+            const bold=kind==="decision"||kind==="result";
+            return (
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"12px 0",borderBottom:last?"none":`1px solid ${border}`}}>
+                <div>
+                  <span style={{fontSize:14,color:text2}}>{label}</span>
+                  {note&&<span style={{fontSize:11,color:text3,marginLeft:8}}>{note}</span>}
+                </div>
+                <span style={{fontSize:bold?17:15,fontWeight:bold?700:600,color}}>
+                  {v!==0?fmt(v):<span style={{color:text3,opacity:0.5}}>—</span>}
+                </span>
+              </div>
+            );
+          };
+          return (
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <SectionHead title="Simulateur de revenu" sub="Projection libre pour un mois donné — n'affecte pas vos données réelles" action={
+              <button onClick={()=>{setSimCA("");setSimFrais("");setSimSalaire("");setSimPer("");setSimChargesPay("")}} style={{...btnG,fontSize:12,padding:"8px 16px"}}>Réinitialiser</button>
+            }/>
+            <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20,alignItems:"start"}}>
+              {/* Paramètres */}
+              <div style={{...card,padding:"24px 26px",display:"flex",flexDirection:"column",gap:18}}>
+                <h3 style={{margin:0,fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Paramètres</h3>
+                {numInput("CA facturé (TTC)",simCA,setSimCA)}
+                {numInput("Frais pro (mensuel)",simFrais,setSimFrais)}
+                <div style={{background:"rgba(27,77,110,0.05)",border:`1px solid rgba(27,77,110,0.18)`,borderRadius:12,padding:"14px 16px"}}>
+                  {numInput("Salaire",simSalaire,setSimSalaire)}
+                  <p style={{margin:"8px 0 0",fontSize:11,color:ocean,lineHeight:1.4}}>Ajustez cette valeur pour voir l&apos;impact sur les charges, l&apos;IS et le bénéfice ci-contre.</p>
+                </div>
+                {numInput("PER / Assurance vie",simPer,setSimPer)}
+                {numInput("Charges sociales payées",simChargesPay,setSimChargesPay)}
+              </div>
+              {/* Résultat */}
+              <div style={{...card,padding:"24px 26px"}}>
+                <h3 style={{margin:"0 0 4px",fontSize:16,fontFamily:serif,fontWeight:400,color:text}}>Résultat</h3>
+                <p style={{margin:"0 0 14px",fontSize:12,color:text3}}>CA HT {fmt(sim.ca/1.2)} &nbsp;·&nbsp; Tot. dépenses {fmt(sim.totalDepenses)}</p>
+                <div>
+                  {resultRow("TVA calc.","tvaCalc","neutral","÷ 6")}
+                  {resultRow("Charges calc.","chargesCalc","calc","45% × (salaire + PER/AV)")}
+                  {resultRow("Diff. charges","diffCharge","diffCharge","calc. − payé")}
+                  {resultRow("IS calc.","is","calc","15% du bénéfice")}
+                  {resultRow("À conserver","aConserver","decision","diff charges + IS")}
+                  {resultRow("Bénéfice mois","benefice","decision","CA HT − dépenses")}
+                  {resultRow("Tréso mensuelle","tresoMensuelle","result","bénéf. − à conserver",true)}
+                </div>
+                <p style={{margin:"16px 0 0",fontSize:11,color:text3,lineHeight:1.5}}>
+                  Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler.
+                </p>
+              </div>
+            </div>
+          </div>
           );
         })()}
 
