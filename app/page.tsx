@@ -22,7 +22,35 @@ const ENTRY_SUGGESTIONS = [
 
 const ocean="#1B4D6E", sage="#2A7A5A", basque="#C0622A", amber="#8F6018";
 const text="#111827", text2="#4B5563", text3="#9CA3AF", border="#E5E7EB";
+const negative="#DC2626";
 const serif="'DM Serif Display',serif";
+
+type BilanColKind="revenue"|"decision"|"result"|"calc"|"neutral";
+type BilanColKey="caTTC"|"tvaCalc"|"frais"|"salaire"|"per"|"chargesPay"|"chargesCalc"|"diffCharge"|"totalDepenses"|"is"|"aConserver"|"tresoMois"|"tresoMensuelle"|"tresoReelleCum";
+const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKind}[] = [
+  {key:"caTTC",         h:"CA Facturé",     note:"déclaré",             w:100, kind:"revenue"},
+  {key:"tvaCalc",        h:"TVA calc.",      note:"÷ 6",                 w:90,  kind:"neutral"},
+  {key:"frais",          h:"Frais Pro",      note:"",                    w:90,  kind:"neutral"},
+  {key:"salaire",        h:"Salaire",        note:"",                    w:90,  kind:"neutral"},
+  {key:"per",            h:"PER / AV",       note:"",                    w:90,  kind:"neutral"},
+  {key:"chargesPay",     h:"Ch. payées",     note:"réelles",             w:96,  kind:"neutral"},
+  {key:"chargesCalc",    h:"Ch. calc.",      note:"45%",                 w:90,  kind:"calc"},
+  {key:"diffCharge",     h:"Diff. charges",  note:"calc − payé",         w:96,  kind:"neutral"},
+  {key:"totalDepenses",  h:"Tot. dépenses",  note:"HT",                  w:96,  kind:"neutral"},
+  {key:"is",             h:"IS calc.",       note:"15%",                 w:85,  kind:"calc"},
+  {key:"aConserver",     h:"À conserver",    note:"diff + IS",           w:100, kind:"decision"},
+  {key:"tresoMois",      h:"Bénéfice mois",  note:"",                    w:110, kind:"decision"},
+  {key:"tresoMensuelle", h:"Tréso mensuelle",note:"bénéf. − à conserver",w:110, kind:"result"},
+  {key:"tresoReelleCum", h:"Tréso réelle",   note:"cumulé",              w:110, kind:"result"},
+];
+const BILAN_COLS_SIMPLE: BilanColKey[] = ["caTTC","totalDepenses","tresoMois","tresoReelleCum"];
+const bilanCellColor=(kind:BilanColKind,v:number)=>{
+  if(v<0) return negative;
+  if(v===0) return text3;
+  if(kind==="revenue"||kind==="decision") return ocean;
+  if(kind==="result") return text;
+  return text2;
+};
 
 const FRAIS_COLORS: Record<string,{bg:string,dot:string}> = {
   "Repas client":   {bg:"rgba(234,88,12,0.1)",  dot:"#EA580C"},
@@ -379,6 +407,10 @@ export default function Home() {
     setFraisColorOverrides(next);
     localStorage.setItem("fraisColors",JSON.stringify(next));
   };
+  const [bilanVueSimple,setBilanVueSimple] = useState<boolean>(()=>{
+    try{return localStorage.getItem("bilanVueSimple")==="1"}catch{return false}
+  });
+  const setBilanVue=(simple:boolean)=>{setBilanVueSimple(simple);localStorage.setItem("bilanVueSimple",simple?"1":"0")};
 
   // Perso data
   const [recurring,setRecurring] = useState<any[]>([]);
@@ -1262,38 +1294,27 @@ export default function Home() {
         })()}
 
         {/* ══ PRO — Bilan annuel ══ */}
-        {appMode==="pro"&&proTab==="pro-annual"&&(
+        {appMode==="pro"&&proTab==="pro-annual"&&(()=>{
+          const bilanCols=bilanVueSimple?BILAN_COLS.filter(c=>BILAN_COLS_SIMPLE.includes(c.key)):BILAN_COLS;
+          return (
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — CA facturé, charges imputées"/>
-            <div style={{overflowX:"auto",borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:1240}}>
+            <SectionHead title={`Bilan ${year}`} sub="Curutchet Consulting — CA facturé, charges imputées" action={
+              <div style={{display:"flex",border:`1px solid ${border}`,borderRadius:10,overflow:"hidden"}}>
+                <button onClick={()=>setBilanVue(false)} style={{padding:"7px 14px",fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:!bilanVueSimple?ocean:"#FFF",color:!bilanVueSimple?"#FFF":text2}}>Vue complète</button>
+                <button onClick={()=>setBilanVue(true)} style={{padding:"7px 14px",fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:bilanVueSimple?ocean:"#FFF",color:bilanVueSimple?"#FFF":text2}}>Vue simplifiée</button>
+              </div>
+            }/>
+            <div style={{overflowX:"auto",overflowY:"auto",maxHeight:640,borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:bilanVueSimple?600:1240}}>
                 <thead>
                   <tr style={{background:"#F7F5F0"}}>
-                    {[
-                      {h:"Mois",           w:72,  note:"",             grp:""},
-                      {h:"CA Facturé",     w:100, note:"déclaré",      grp:"rev"},
-                      {h:"TVA calc.",      w:90,  note:"÷ 6",          grp:"info"},
-                      {h:"Frais Pro",      w:90,  note:"",             grp:"cost"},
-                      {h:"Salaire",        w:90,  note:"",             grp:"cost"},
-                      {h:"PER / AV",       w:90,  note:"",             grp:"cost"},
-                      {h:"Ch. payées",     w:96,  note:"réelles",      grp:"cost"},
-                      {h:"Ch. calc.",      w:90,  note:"45%",          grp:"cost"},
-                      {h:"Diff. charges",  w:96,  note:"calc − payé",  grp:"cost"},
-                      {h:"Tot. dépenses",  w:96,  note:"HT",           grp:"cost"},
-                      {h:"IS calc.",       w:85,  note:"15%",          grp:"fisc"},
-                      {h:"À conserver",    w:100, note:"diff + IS",    grp:"fisc"},
-                      {h:"Bénéfice mois",  w:110, note:"",             grp:"res"},
-                      {h:"Tréso mensuelle",w:110, note:"bénéf. − à conserver", grp:"res"},
-                      {h:"Tréso réelle",   w:110, note:"cumulé",       grp:"res"},
-                    ].map((h,i)=>{
-                      const accent=h.grp==="rev"?ocean:h.grp==="cost"?basque:h.grp==="fisc"?amber:h.grp==="res"?sage:"transparent";
-                      return (
-                        <th key={i} style={{padding:"12px 10px",textAlign:i===0?"left":"right",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:h.w,minWidth:h.w,borderBottom:`1px solid ${border}`,borderTop:`3px solid ${accent}`}}>
-                          {h.h}
-                          {h.note&&<span style={{display:"block",fontSize:10,fontWeight:400,color:text3,textTransform:"none",letterSpacing:0}}>{h.note}</span>}
-                        </th>
-                      );
-                    })}
+                    <th style={{padding:"12px 10px",textAlign:"left",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:72,minWidth:72,borderBottom:`1px solid ${border}`,borderTop:`1px solid ${border}`}}>Mois</th>
+                    {bilanCols.map(c=>(
+                      <th key={c.key} style={{padding:"12px 10px",textAlign:"right",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:c.w,minWidth:c.w,borderBottom:`1px solid ${border}`,borderTop:c.kind==="decision"?`3px solid ${ocean}`:`1px solid ${border}`}}>
+                        {c.h}
+                        {c.note&&<span style={{display:"block",fontSize:10,fontWeight:400,color:text3,textTransform:"none",letterSpacing:0}}>{c.note}</span>}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -1301,55 +1322,57 @@ export default function Home() {
                     const isCurrent=i===month;
                     const isPast=i<month;
                     const dim=!row.hasData&&!isPast&&!isCurrent;
-                    return (
-                      <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:isCurrent?"rgba(27,77,110,0.04)":"transparent",opacity:dim?0.35:1}}>
-                        <td style={{padding:"12px 10px",fontWeight:isCurrent?700:500,color:isCurrent?ocean:text,fontSize:13}}>{row.label}</td>
-                        {[
-                          {v:row.caTTC,         c:row.caTTC>0?ocean:text3},
-                          {v:row.tvaCalc,        c:text2},
-                          {v:row.frais,          c:row.frais>0?basque:text3},
-                          {v:row.salaire,        c:row.salaire>0?text:text3},
-                          {v:row.per,            c:row.per>0?amber:text3},
-                          {v:row.chargesPay,     c:row.chargesPay>0?basque:text3},
-                          {v:row.chargesCalc,    c:text2, italic:true},
-                          {v:row.diffCharge,     c:row.diffCharge>0?amber:row.diffCharge<0?sage:text3},
-                          {v:row.totalDepenses,  c:row.totalDepenses>0?basque:text3},
-                          {v:row.is,             c:row.is>0?basque:text3},
-                          {v:row.aConserver,     c:row.aConserver>0?amber:row.aConserver<0?sage:text3, bold:true},
-                          {v:row.tresoMois,      c:row.tresoMois>0?sage:row.tresoMois<0?basque:text3, bold:true},
-                          {v:row.tresoMensuelle, c:row.tresoMensuelle>0?sage:row.tresoMensuelle<0?basque:text3, bold:true},
-                          {v:row.tresoReelleCum, c:row.tresoReelleCum>0?ocean:row.tresoReelleCum<0?basque:text3, bold:true},
-                        ].map((cell,j)=>(
-                          <td key={j} style={{padding:"12px 10px",textAlign:"right",fontWeight:cell.bold?600:400,color:cell.v===0&&!cell.bold?text3:cell.c,fontStyle:cell.italic?"italic":"normal"}}>
-                            {cell.v!==0?fmt(cell.v):<span style={{color:text3,opacity:0.3}}>—</span>}
+                    const rowBg=isCurrent?"rgba(27,77,110,0.05)":"transparent";
+                    if(dim){
+                      const mergedCols=bilanCols.slice(0,-1);
+                      const lastCol=bilanCols[bilanCols.length-1];
+                      const lastVal=(row as any)[lastCol.key];
+                      return (
+                        <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:rowBg}}>
+                          <td style={{padding:"12px 10px",fontWeight:500,color:text3,fontSize:13}}>{row.label}</td>
+                          <td colSpan={mergedCols.length} style={{padding:"12px 10px",textAlign:"center",fontSize:12,color:text2,background:"#FAFAF8"}}>Prévisionnel — à venir</td>
+                          <td style={{padding:"12px 10px",textAlign:"right",fontWeight:600,color:bilanCellColor(lastCol.kind,lastVal),opacity:0.85}}>
+                            {lastVal!==0?fmt(lastVal):<span style={{color:text3,opacity:0.3}}>—</span>}
                           </td>
-                        ))}
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={row.k} style={{borderBottom:i<11?`1px solid #F2EFE9`:"none",background:rowBg}}>
+                        <td style={{padding:"12px 10px",fontWeight:isCurrent?700:500,color:isCurrent?ocean:text,fontSize:13}}>{row.label}</td>
+                        {bilanCols.map(c=>{
+                          const v=(row as any)[c.key];
+                          const bold=c.kind==="decision"||c.kind==="result";
+                          const color=bilanCellColor(c.kind,v);
+                          return (
+                            <td key={c.key} style={{padding:"12px 10px",textAlign:"right",fontWeight:bold?600:400,color}}>
+                              {v===0?<span style={{color:text3,opacity:0.3}}>—</span>:
+                                c.kind==="calc"?
+                                  <span style={{opacity:0.75}} title="Valeur calculée, non déclarée">
+                                    {fmt(v)}
+                                    <span style={{marginLeft:5,fontSize:9,fontWeight:700,letterSpacing:"0.3px",color:text3,background:"#F2EFE9",borderRadius:4,padding:"1px 4px"}}>calc.</span>
+                                  </span>
+                                  :fmt(v)}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
                   {(()=>{
-                    const T=(fn: (r: typeof proAnnual[0])=>number)=>proAnnual.reduce((s,r)=>s+fn(r),0);
-                    const cols=[
-                      T(r=>r.caTTC),
-                      T(r=>r.tvaCalc),
-                      T(r=>r.frais),
-                      T(r=>r.salaire),
-                      T(r=>r.per),
-                      T(r=>r.chargesPay),
-                      T(r=>r.chargesCalc),
-                      T(r=>r.diffCharge),
-                      T(r=>r.totalDepenses),
-                      T(r=>r.is),
-                      T(r=>r.aConserver),
-                      T(r=>r.tresoMois),
-                      proAnnual[11]?.tresoReelleCum||0,
-                    ];
+                    const T=(k:BilanColKey)=>proAnnual.reduce((s,r)=>s+(r as any)[k],0);
                     return (
-                      <tr style={{background:"#F2F0EB",borderTop:`2px solid ${border}`}}>
-                        <td style={{padding:"13px 10px",fontWeight:700,fontSize:13,color:text}}>Total</td>
-                        {cols.map((v,j)=>(
-                          <td key={j} style={{padding:"13px 10px",textAlign:"right",fontWeight:600,fontSize:13,color:v>0?ocean:v<0?basque:text3}}>{v?fmt(v):"—"}</td>
-                        ))}
+                      <tr style={{background:"#EDEBE4",position:"sticky",bottom:0,boxShadow:`0 -1px 0 ${border}`}}>
+                        <td style={{padding:"14px 10px",fontWeight:700,fontSize:14,color:text,position:"sticky",bottom:0,background:"#EDEBE4"}}>Total</td>
+                        {bilanCols.map(c=>{
+                          const v=c.key==="tresoReelleCum"?(proAnnual[11]?.tresoReelleCum||0):T(c.key);
+                          const color=v<0?negative:v===0?text3:(c.kind==="revenue"||c.kind==="decision")?ocean:c.kind==="result"?text:text2;
+                          return (
+                            <td key={c.key} style={{padding:"14px 10px",textAlign:"right",fontWeight:700,fontSize:14,color,position:"sticky",bottom:0,background:"#EDEBE4"}}>
+                              {v?fmt(v):"—"}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })()}
@@ -1360,7 +1383,8 @@ export default function Home() {
               TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver)
             </p>
           </div>
-        )}
+          );
+        })()}
 
         {/* ══ PRO — Trésorerie (flux réels) ══ */}
         {appMode==="pro"&&proTab==="pro-tresorerie"&&(
