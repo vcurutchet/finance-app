@@ -49,6 +49,7 @@ const bilanCellColor=(kind:BilanColKind,v:number)=>{
   if(v===0) return text3;
   if(kind==="revenue"||kind==="decision") return ocean;
   if(kind==="result") return text;
+  if(kind==="calc") return amber;
   return text2;
 };
 
@@ -1345,14 +1346,8 @@ export default function Home() {
                           const bold=c.kind==="decision"||c.kind==="result";
                           const color=bilanCellColor(c.kind,v);
                           return (
-                            <td key={c.key} style={{padding:"12px 10px",textAlign:"right",fontWeight:bold?600:400,color}}>
-                              {v===0?<span style={{color:text3,opacity:0.3}}>—</span>:
-                                c.kind==="calc"?
-                                  <span style={{opacity:0.75}} title="Valeur calculée, non déclarée">
-                                    {fmt(v)}
-                                    <span style={{marginLeft:5,fontSize:9,fontWeight:700,letterSpacing:"0.3px",color:text3,background:"#F2EFE9",borderRadius:4,padding:"1px 4px"}}>calc.</span>
-                                  </span>
-                                  :fmt(v)}
+                            <td key={c.key} title={c.kind==="calc"?"Valeur calculée, non déclarée":undefined} style={{padding:"12px 10px",textAlign:"right",fontWeight:bold?600:400,color}}>
+                              {v===0?<span style={{color:text3,opacity:0.3}}>—</span>:fmt(v)}
                             </td>
                           );
                         })}
@@ -1366,7 +1361,7 @@ export default function Home() {
                         <td style={{padding:"14px 10px",fontWeight:700,fontSize:14,color:text,position:"sticky",bottom:0,background:"#EDEBE4"}}>Total</td>
                         {bilanCols.map(c=>{
                           const v=c.key==="tresoReelleCum"?(proAnnual[11]?.tresoReelleCum||0):T(c.key);
-                          const color=v<0?negative:v===0?text3:(c.kind==="revenue"||c.kind==="decision")?ocean:c.kind==="result"?text:text2;
+                          const color=v<0?negative:v===0?text3:(c.kind==="revenue"||c.kind==="decision")?ocean:c.kind==="result"?text:c.kind==="calc"?amber:text2;
                           return (
                             <td key={c.key} style={{padding:"14px 10px",textAlign:"right",fontWeight:700,fontSize:14,color,position:"sticky",bottom:0,background:"#EDEBE4"}}>
                               {v?fmt(v):"—"}
