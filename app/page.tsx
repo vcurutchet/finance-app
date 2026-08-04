@@ -11,7 +11,7 @@ const monthKey = (y: number, m: number) => `${y}-${String(m+1).padStart(2,"0")}`
 const fmtMonthYear = (d: string) => { if(!d)return""; const [y,m]=d.split("-"); return `${MONTHS_S[Number(m)-1]} ${y}`; };
 const isRecurringActive = (r: any, mk: string) => (!r.start_date||r.start_date.slice(0,7)<=mk)&&(!r.end_date||r.end_date.slice(0,7)>=mk);
 
-const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🧾 Impôt","📞 Téléphone","🌐 Internet","🏦 Crédit immobilier","🛠️ Crédit travaux","🛡️ Assurance","🔧 Divers"];
+const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🧾 Impôt","📞 Téléphone","🌐 Internet","🏦 Crédit immobilier","🛠️ Crédit travaux","🛡️ Assurance","👶 Enfant","⚽ Sport","🔧 Divers"];
 const SAVINGS_TYPES  = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
 const INCOME_TYPES   = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Autre"];
 const EXIT_CATS      = ["TVA","Impôt société","Frais pro","Salaire","PER / Assurance vie","Charges sociales","Divers"];
@@ -429,10 +429,11 @@ export default function Home() {
   const setBilanVue=(simple:boolean)=>{setBilanVueSimple(simple);localStorage.setItem("bilanVueSimple",simple?"1":"0")};
 
   // Perso data
-  const [recurring,setRecurring] = useState<any[]>([]);
-  const [expenses,setExpenses]   = useState<any[]>([]);
-  const [incomes,setIncomes]     = useState<any[]>([]);
-  const [savings,setSavings]     = useState<any[]>([]);
+  const [recurring,setRecurring]         = useState<any[]>([]);
+  const [recurringSkips,setRecurringSkips] = useState<any[]>([]);
+  const [expenses,setExpenses]           = useState<any[]>([]);
+  const [incomes,setIncomes]             = useState<any[]>([]);
+  const [savings,setSavings]             = useState<any[]>([]);
 
   // Pro data
   const [proEntries,setProEntries]   = useState<any[]>([]);
@@ -462,13 +463,14 @@ export default function Home() {
 
   const loadData=useCallback(async()=>{
     if(!userId)return;
-    const [{data:rec},{data:exp},{data:inc},{data:sav}]=await Promise.all([
+    const [{data:rec},{data:recSkips},{data:exp},{data:inc},{data:sav}]=await Promise.all([
       supabase.from("recurring_expenses").select("*").eq("user_id",userId).order("created_at"),
+      supabase.from("recurring_expenses_skips").select("*").eq("user_id",userId).eq("month_key",mk),
       supabase.from("one_time_expenses").select("*").eq("user_id",userId).eq("month_key",mk).order("date"),
       supabase.from("income").select("*").eq("user_id",userId).eq("month_key",mk).order("id"),
       supabase.from("savings").select("*").eq("user_id",userId).order("created_at"),
     ]);
-    setRecurring(rec||[]);setExpenses(exp||[]);setIncomes(inc||[]);setSavings(sav||[]);
+    setRecurring(rec||[]);setRecurringSkips(recSkips||[]);setExpenses(exp||[]);setIncomes(inc||[]);setSavings(sav||[]);
   },[userId,mk]);
 
   const loadProData=useCallback(async()=>{
@@ -518,7 +520,10 @@ export default function Home() {
 
   // Perso computed
   const persoC=useMemo(()=>{
-    const activeRecurring=recurring.filter(r=>isRecurringActive(r,mk));
+    const periodRecurring=recurring.filter(r=>isRecurringActive(r,mk));
+    const isSkipped=(r:any)=>recurringSkips.some(s=>s.recurring_expense_id===r.id&&s.month_key===mk);
+    const activeRecurring=periodRecurring.filter(r=>!isSkipped(r));
+    const skippedRecurring=periodRecurring.filter(r=>isSkipped(r));
     const totalRecurring=activeRecurring.reduce((s,r)=>s+Number(r.amount),0);
     const totalOneTime=expenses.reduce((s,e)=>s+Number(e.amount),0);
     const totalSpent=totalRecurring+totalOneTime;
@@ -526,8 +531,8 @@ export default function Home() {
     const manualIncomes=incomes.filter((i:any)=>i.type!=="__salary_auto__");
     const salaireAuto=allExits.filter((e:any)=>e.month_key===mk&&e.category==="Salaire").reduce((s:number,e:any)=>s+Number(e.amount),0);
     const budget=manualIncomes.reduce((s:number,i:any)=>s+Number(i.amount),0)+salaireAuto;
-    return {activeRecurring,totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent,salaireAuto,manualIncomes};
-  },[recurring,expenses,incomes,savings,allExits,mk]);
+    return {activeRecurring,skippedRecurring,totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent,salaireAuto,manualIncomes};
+  },[recurring,recurringSkips,expenses,incomes,savings,allExits,mk]);
 
   // Pro monthly computed
   const proC=useMemo(()=>{
@@ -625,7 +630,9 @@ export default function Home() {
   // ─── Perso CRUD ───
   const addRecurring  = async(i: any)=>{const {error}=await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date});if(error){console.error("addRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
   const editRecurring = async(i: any)=>{const {error}=await supabase.from("recurring_expenses").update({name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date}).eq("id",i.id);if(error){console.error("editRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
-  const delRecurring  = async(id: string)=>{await supabase.from("recurring_expenses").delete().eq("id",id);loadData()};
+  const delRecurring  = async(id: string)=>{await supabase.from("recurring_expenses").delete().eq("id",id);await supabase.from("recurring_expenses_skips").delete().eq("recurring_expense_id",id);loadData()};
+  const skipRecurring   = async(recurringId: string)=>{const {error}=await supabase.from("recurring_expenses_skips").insert({user_id:userId,recurring_expense_id:recurringId,month_key:mk});if(error){console.error("skipRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData()};
+  const unskipRecurring = async(recurringId: string)=>{const {error}=await supabase.from("recurring_expenses_skips").delete().eq("user_id",userId).eq("recurring_expense_id",recurringId).eq("month_key",mk);if(error){console.error("unskipRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData()};
   const addExpense    = async(i: any)=>{const {error}=await supabase.from("one_time_expenses").insert({user_id:userId,month_key:mk,name:i.name,amount:i.amount,category:i.category,date:i.date});if(error){console.error("addExpense:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
   const editExpense   = async(i: any)=>{const {error}=await supabase.from("one_time_expenses").update({name:i.name,amount:i.amount,category:i.category,date:i.date}).eq("id",i.id);if(error){console.error("editExpense:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
   const delExpense    = async(id: string)=>{await supabase.from("one_time_expenses").delete().eq("id",id);loadData()};
@@ -964,12 +971,10 @@ export default function Home() {
         {appMode==="perso"&&tab==="recurring"&&(
           <div>
             <SectionHead title="Dépenses récurrentes" sub={`${fmt(persoC.totalRecurring)} / mois`} action={<button onClick={()=>setModal("addRecurring")} style={btnP}>+ Ajouter</button>}/>
-            {recurring.length===0?<Empty label="Aucune dépense récurrente"/>:
+            {persoC.activeRecurring.length===0&&persoC.skippedRecurring.length===0?<Empty label="Aucune dépense récurrente ce mois"/>:
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {recurring.map(r=>{
-                  const active=isRecurringActive(r,mk);
-                  return (
-                  <div key={r.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:active?1:0.45}}>
+                {persoC.activeRecurring.map((r:any)=>(
+                  <div key={r.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={{display:"flex",alignItems:"center",gap:14}}>
                       <div style={{width:3,height:28,borderRadius:2,background:ocean,flexShrink:0}}/>
                       <div>
@@ -977,18 +982,34 @@ export default function Home() {
                         <div style={{fontSize:12,color:text3,marginTop:2}}>
                           {r.category}
                           {(r.start_date||r.end_date)&&` · ${r.start_date?fmtMonthYear(r.start_date):"toujours"} → ${r.end_date?fmtMonthYear(r.end_date):"toujours"}`}
-                          {!active&&" · hors période"}
                         </div>
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:16,fontWeight:600,color:basque,marginRight:8}}>{fmt(r.amount)}</span>
+                      <button onClick={()=>skipRecurring(r.id)} style={{...iconBtn(),background:"rgba(143,96,24,0.08)",color:amber}} title="Désactiver ce mois">⊘</button>
                       <button onClick={()=>{setEditItem(r);setModal("editRecurring")}} style={iconBtn()}>✏</button>
                       <button onClick={()=>delRecurring(r.id)} style={iconBtn(true)}>✕</button>
                     </div>
                   </div>
-                  );
-                })}
+                ))}
+                {persoC.skippedRecurring.map((r:any)=>(
+                  <div key={r.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:0.45}}>
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{width:3,height:28,borderRadius:2,background:text3,flexShrink:0}}/>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:500,color:text,textDecoration:"line-through"}}>{r.name}</div>
+                        <div style={{fontSize:12,color:text3,marginTop:2}}>{r.category} · désactivé ce mois</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:16,fontWeight:600,color:text3,marginRight:8}}>{fmt(r.amount)}</span>
+                      <button onClick={()=>unskipRecurring(r.id)} style={{...iconBtn(),background:"rgba(42,122,90,0.08)",color:sage}} title="Réactiver ce mois">↺</button>
+                      <button onClick={()=>{setEditItem(r);setModal("editRecurring")}} style={iconBtn()}>✏</button>
+                      <button onClick={()=>delRecurring(r.id)} style={iconBtn(true)}>✕</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             }
           </div>
