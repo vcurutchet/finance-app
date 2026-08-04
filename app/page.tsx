@@ -15,7 +15,7 @@ const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Re
 const SAVINGS_TYPES  = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
 const INCOME_TYPES   = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Allocations","Autre"];
 const EXIT_CATS      = ["TVA","Impôt société","Frais pro","Salaire","PER / Assurance vie","Charges sociales","Divers"];
-const FRAIS_TYPES    = ["Repas client","Transport","Hébergement","Matériel","Logiciel","Formation","Téléphone","Internet","Fournitures","Sous-traitance","Frais bancaire","Autre"];
+const FRAIS_TYPES    = ["Repas client","Transport","Hébergement","Matériel","Logiciel","Formation","Téléphone","Internet","Fournitures","Sous-traitance","Autre"];
 const ENTRY_SUGGESTIONS = [
   ...MONTHS_FR.map(m=>`CA ${m} 2026`),
   "CA Novembre 2025","CA Décembre 2025",
