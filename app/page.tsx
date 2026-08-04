@@ -13,7 +13,7 @@ const isRecurringActive = (r: any, mk: string) => (!r.start_date||r.start_date.s
 
 const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🧾 Impôt","📞 Téléphone","🌐 Internet","🏦 Crédit immobilier","🛠️ Crédit travaux","🛡️ Assurance","👶 Enfant","⚽ Sport","🚨 Amende","🔧 Divers"];
 const SAVINGS_TYPES  = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
-const INCOME_TYPES   = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Autre"];
+const INCOME_TYPES   = ["CA 2026","CA 2025","Salaire","Freelance","Dividendes","Loyer perçu","Prime","Remboursement","Allocations","Autre"];
 const EXIT_CATS      = ["TVA","Impôt société","Frais pro","Salaire","PER / Assurance vie","Charges sociales","Divers"];
 const FRAIS_TYPES    = ["Repas client","Transport","Hébergement","Matériel","Logiciel","Formation","Téléphone","Internet","Fournitures","Sous-traitance","Autre"];
 const ENTRY_SUGGESTIONS = [
