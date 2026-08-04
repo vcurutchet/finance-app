@@ -623,17 +623,17 @@ export default function Home() {
 
 
   // ─── Perso CRUD ───
-  const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date});loadData();setModal(null)};
-  const editRecurring = async(i: any)=>{await supabase.from("recurring_expenses").update({name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
+  const addRecurring  = async(i: any)=>{const {error}=await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date});if(error){console.error("addRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
+  const editRecurring = async(i: any)=>{const {error}=await supabase.from("recurring_expenses").update({name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date}).eq("id",i.id);if(error){console.error("editRecurring:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
   const delRecurring  = async(id: string)=>{await supabase.from("recurring_expenses").delete().eq("id",id);loadData()};
-  const addExpense    = async(i: any)=>{await supabase.from("one_time_expenses").insert({user_id:userId,month_key:mk,name:i.name,amount:i.amount,category:i.category,date:i.date});loadData();setModal(null)};
-  const editExpense   = async(i: any)=>{await supabase.from("one_time_expenses").update({name:i.name,amount:i.amount,category:i.category,date:i.date}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
+  const addExpense    = async(i: any)=>{const {error}=await supabase.from("one_time_expenses").insert({user_id:userId,month_key:mk,name:i.name,amount:i.amount,category:i.category,date:i.date});if(error){console.error("addExpense:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
+  const editExpense   = async(i: any)=>{const {error}=await supabase.from("one_time_expenses").update({name:i.name,amount:i.amount,category:i.category,date:i.date}).eq("id",i.id);if(error){console.error("editExpense:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
   const delExpense    = async(id: string)=>{await supabase.from("one_time_expenses").delete().eq("id",id);loadData()};
-  const addIncome     = async(i: any)=>{await supabase.from("income").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount});loadData();setModal(null)};
-  const editIncome    = async(i: any)=>{await supabase.from("income").update({type:i.type,amount:i.amount}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
+  const addIncome     = async(i: any)=>{const {error}=await supabase.from("income").insert({user_id:userId,month_key:mk,type:i.type,amount:i.amount});if(error){console.error("addIncome:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
+  const editIncome    = async(i: any)=>{const {error}=await supabase.from("income").update({type:i.type,amount:i.amount}).eq("id",i.id);if(error){console.error("editIncome:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
   const delIncome     = async(id: string)=>{await supabase.from("income").delete().eq("id",id);loadData()};
-  const addSaving     = async(i: any)=>{await supabase.from("savings").insert({user_id:userId,name:i.name,amount:i.amount,type:i.type,location:i.location});loadData();setModal(null)};
-  const editSaving    = async(i: any)=>{await supabase.from("savings").update({name:i.name,amount:i.amount,type:i.type,location:i.location}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
+  const addSaving     = async(i: any)=>{const {error}=await supabase.from("savings").insert({user_id:userId,name:i.name,amount:i.amount,type:i.type,location:i.location});if(error){console.error("addSaving:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null)};
+  const editSaving    = async(i: any)=>{const {error}=await supabase.from("savings").update({name:i.name,amount:i.amount,type:i.type,location:i.location}).eq("id",i.id);if(error){console.error("editSaving:",error.message);alert("Erreur: "+error.message);return;}loadData();setModal(null);setEditItem(null)};
   const delSaving     = async(id: string)=>{await supabase.from("savings").delete().eq("id",id);loadData()};
 
   // ─── Pro CRUD ───
