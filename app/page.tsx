@@ -570,7 +570,13 @@ export default function Home() {
       const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
       const resultatAvantImpot=caTTC/1.2-totalDepenses;
       const benefice=caTTC/1.2-frais-salaire-per-chargesPay;
-      const is=Math.max(0,resultatAvantImpot*0.15);
+      // IS calc. = 15% × résultat avant impôt, y compris quand le résultat est négatif
+      // (les pertes mensuelles compensent les bénéfices dans le cumul annuel).
+      // ⚠️ Valable uniquement tant que le résultat ANNUEL CUMULÉ reste sous le seuil
+      // du taux réduit IS (42 500 €) ; au-delà, la tranche excédentaire est à 25% et
+      // un calcul ligne par ligne à taux unique ne suffit plus (il faudrait taxer le
+      // cumul progressif plutôt que chaque mois isolément). Non géré ici.
+      const is=resultatAvantImpot*0.15;
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC/1.2-(totalSorties-tvaReelle);
       const diffCharge=salaire?(chargesCalc-chargesPay):0;
@@ -1403,7 +1409,10 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; Résultat avant impôt = CA HT − Tot. dépenses &nbsp;·&nbsp; IS = 15% × Résultat avant impôt &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver) &nbsp;·&nbsp; Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler
+              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; Résultat avant impôt = CA HT − Tot. dépenses &nbsp;·&nbsp; IS = 15% × Résultat avant impôt, y compris si négatif (les pertes compensent les bénéfices dans le cumul annuel) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver) &nbsp;·&nbsp; Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler
+            </p>
+            <p style={{margin:0,fontSize:11,color:text3,textAlign:"center",lineHeight:1.6,fontStyle:"italic"}}>
+              ⚠️ IS à taux fixe 15% valable tant que le résultat annuel cumulé reste sous le seuil du taux réduit (42 500 €). Au-delà, la tranche excédentaire est taxée à 25% et ce calcul ligne par ligne ne suffit plus — il faudrait taxer le cumul progressif plutôt que chaque mois isolément. Non géré actuellement.
             </p>
           </div>
           );
