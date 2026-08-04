@@ -26,7 +26,7 @@ const negative="#DC2626";
 const serif="'DM Serif Display',serif";
 
 type BilanColKind="revenue"|"decision"|"result"|"calc"|"neutral"|"diffCharge";
-type BilanColKey="caTTC"|"tvaCalc"|"frais"|"salaire"|"per"|"chargesPay"|"chargesCalc"|"diffCharge"|"totalDepenses"|"is"|"aConserver"|"tresoMois"|"tresoMensuelle"|"tresoReelleCum";
+type BilanColKey="caTTC"|"tvaCalc"|"frais"|"salaire"|"per"|"chargesPay"|"chargesCalc"|"diffCharge"|"totalDepenses"|"resultatAvantImpot"|"is"|"aConserver"|"tresoMois"|"tresoMensuelle"|"tresoReelleCum";
 const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKind}[] = [
   {key:"caTTC",         h:"CA Facturé",     note:"déclaré",             w:100, kind:"revenue"},
   {key:"tvaCalc",        h:"TVA calc.",      note:"÷ 6",                 w:90,  kind:"neutral"},
@@ -37,6 +37,7 @@ const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKi
   {key:"chargesCalc",    h:"Ch. calc.",      note:"45%",                 w:90,  kind:"calc"},
   {key:"diffCharge",     h:"Diff. charges",  note:"calc − payé",         w:96,  kind:"diffCharge"},
   {key:"totalDepenses",  h:"Tot. dépenses",  note:"HT",                  w:96,  kind:"neutral"},
+  {key:"resultatAvantImpot",h:"Résultat avant impôt",note:"CA HT − dépenses",w:110,kind:"decision"},
   {key:"is",             h:"IS calc.",       note:"15%",                 w:85,  kind:"calc"},
   {key:"aConserver",     h:"À conserver",    note:"diff + IS",           w:100, kind:"decision"},
   {key:"tresoMois",      h:"Bénéfice mois",  note:"",                    w:110, kind:"decision"},
@@ -568,8 +569,9 @@ export default function Home() {
       const divers=bycat("Divers");
       const isReel=bycat("Impôt société");
       const totalDepenses=frais+salaire+per+chargesPay+divers+isReel;
+      const resultatAvantImpot=caTTC/1.2-totalDepenses;
       const benefice=caTTC/1.2-frais-salaire-per-chargesPay;
-      const is=Math.max(0,benefice*0.15);
+      const is=Math.max(0,resultatAvantImpot*0.15);
       const totalSorties=exts.reduce((s,e)=>s+Number(e.amount),0);
       const tresoMois=caTTC/1.2-(totalSorties-tvaReelle);
       const diffCharge=salaire?(chargesCalc-chargesPay):0;
@@ -579,7 +581,7 @@ export default function Home() {
       cum+=tresoMois;
       cumReelle+=tresoReelleMois;
       const hasData=filterExercise?(caTTC>0||exts.length>0):(ents.length>0||exts.length>0);
-      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,diffCharge,totalDepenses,benefice,is,isReel,aConserver,tresoMois,tresoReelleMois,tresoMensuelle,tresoReelleCum:cumReelle,tresoTotale:cum,hasData};
+      return {label:MONTHS_S[i],k,caTTC,tvaCalc,tvaReelle,frais,salaire,per,chargesPay,chargesCalc,diffCharge,totalDepenses,resultatAvantImpot,benefice,is,isReel,aConserver,tresoMois,tresoReelleMois,tresoMensuelle,tresoReelleCum:cumReelle,tresoTotale:cum,hasData};
     });
   };
   // Bilan annuel : filtré par exercice comptable, CA = facturé (pro_forecast.ca_declare)
@@ -1333,7 +1335,7 @@ export default function Home() {
               </div>
             }/>
             <div style={{overflowX:"auto",overflowY:"auto",maxHeight:640,borderRadius:16,border:`1px solid ${border}`,background:"#FFF",boxShadow:"0 1px 3px rgba(45,52,54,0.04)"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:bilanVueSimple?600:1240}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:bilanVueSimple?600:1340}}>
                 <thead>
                   <tr style={{background:"#F7F5F0"}}>
                     <th style={{padding:"12px 10px",textAlign:"left",fontWeight:600,fontSize:11,color:text2,letterSpacing:"0.4px",textTransform:"uppercase",whiteSpace:"nowrap",width:72,minWidth:72,borderBottom:`1px solid ${border}`,borderTop:`1px solid ${border}`}}>Mois</th>
@@ -1402,7 +1404,7 @@ export default function Home() {
               </table>
             </div>
             <p style={{margin:0,fontSize:12,color:text3,textAlign:"center",lineHeight:1.8}}>
-              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; IS = 15% × (CA HT − Frais pro − Salaire − PER/AV − Charges payées) &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver) &nbsp;·&nbsp; Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler
+              TVA calc. = CA TTC ÷ 6 &nbsp;·&nbsp; Charges calc. = 45% × (Salaire + PER/AV) &nbsp;·&nbsp; Résultat avant impôt = CA HT − Tot. dépenses &nbsp;·&nbsp; IS = 15% × Résultat avant impôt &nbsp;·&nbsp; Tréso réelle = cumul (Bénéfice − À conserver) &nbsp;·&nbsp; Diff. charges : <span style={{color:sage,fontWeight:600}}>vert</span> = remboursement à venir, <span style={{color:basque,fontWeight:600}}>orange</span> = solde à régler
             </p>
           </div>
           );
