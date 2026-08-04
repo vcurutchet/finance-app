@@ -465,7 +465,7 @@ export default function Home() {
     const [{data:rec},{data:exp},{data:inc},{data:sav}]=await Promise.all([
       supabase.from("recurring_expenses").select("*").eq("user_id",userId).order("created_at"),
       supabase.from("one_time_expenses").select("*").eq("user_id",userId).eq("month_key",mk).order("date"),
-      supabase.from("income").select("*").eq("user_id",userId).eq("month_key",mk).order("created_at"),
+      supabase.from("income").select("*").eq("user_id",userId).eq("month_key",mk).order("id"),
       supabase.from("savings").select("*").eq("user_id",userId).order("created_at"),
     ]);
     setRecurring(rec||[]);setExpenses(exp||[]);setIncomes(inc||[]);setSavings(sav||[]);
