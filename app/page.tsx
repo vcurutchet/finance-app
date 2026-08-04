@@ -40,11 +40,10 @@ const BILAN_COLS: {key:BilanColKey,h:string,note:string,w:number,kind:BilanColKi
   {key:"resultatAvantImpot",h:"Résultat avant impôt",note:"CA HT − dépenses",w:110,kind:"decision"},
   {key:"is",             h:"IS calc.",       note:"15%",                 w:85,  kind:"calc"},
   {key:"aConserver",     h:"À conserver",    note:"diff + IS",           w:100, kind:"decision"},
-  {key:"tresoMois",      h:"Bénéfice mois",  note:"",                    w:110, kind:"decision"},
   {key:"tresoMensuelle", h:"Tréso mensuelle",note:"bénéf. − à conserver",w:110, kind:"result"},
   {key:"tresoReelleCum", h:"Tréso réelle",   note:"cumulé",              w:110, kind:"result"},
 ];
-const BILAN_COLS_SIMPLE: BilanColKey[] = ["caTTC","totalDepenses","tresoMois","tresoReelleCum"];
+const BILAN_COLS_SIMPLE: BilanColKey[] = ["caTTC","totalDepenses","tresoMensuelle","tresoReelleCum"];
 const bilanCellColor=(kind:BilanColKind,v:number)=>{
   if(kind==="diffCharge") return v===0?text3:v<0?sage:basque;
   if(v<0) return negative;
