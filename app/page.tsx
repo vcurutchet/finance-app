@@ -8,6 +8,8 @@ const fmt = (n: number) => new Intl.NumberFormat("fr-FR",{style:"currency",curre
 const fmtDate = (d: string) => { if(!d)return"—"; const p=d.split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; };
 const COLOR_PRESETS = ["#2563EB","#7C3AED","#DB2777","#DC2626","#EA580C","#D97706","#16A34A","#0D9488","#0EA5E9","#6366F1","#475569","#9CA3AF"];
 const monthKey = (y: number, m: number) => `${y}-${String(m+1).padStart(2,"0")}`;
+const fmtMonthYear = (d: string) => { if(!d)return""; const [y,m]=d.split("-"); return `${MONTHS_S[Number(m)-1]} ${y}`; };
+const isRecurringActive = (r: any, mk: string) => (!r.start_date||r.start_date.slice(0,7)<=mk)&&(!r.end_date||r.end_date.slice(0,7)>=mk);
 
 const EXPENSE_CATS   = ["🏠 Loyer","🚗 Transport","🛒 Courses","🍽️ Restaurant","📱 Abonnements","⚡ Énergie","💊 Santé","🎭 Loisirs","👕 Vêtements","🎓 Éducation","🐾 Animaux","🔧 Divers"];
 const SAVINGS_TYPES  = ["Livret A","LDDS","PEL","Assurance Vie","PEA","Compte Titre","Crypto","Autre"];
@@ -140,13 +142,19 @@ function RecurringForm({initial,onSubmit,onClose,title}: any) {
   const [name,setName]=useState(initial?.name||"");
   const [amount,setAmt]=useState(initial?.amount||"");
   const [cat,setCat]=useState(initial?.category||EXPENSE_CATS[0]);
-  const go=()=>{if(!name||!amount)return;onSubmit({...(initial||{}),name,amount:parseFloat(amount),category:cat})};
+  const [startM,setStartM]=useState(initial?.start_date?initial.start_date.slice(0,7):"");
+  const [endM,setEndM]=useState(initial?.end_date?initial.end_date.slice(0,7):"");
+  const go=()=>{if(!name||!amount)return;onSubmit({...(initial||{}),name,amount:parseFloat(amount),category:cat,start_date:startM?`${startM}-01`:null,end_date:endM?`${endM}-01`:null})};
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <Field label="Nom"><input value={name} onChange={e=>setName(e.target.value)} placeholder="ex : Loyer" style={inp}/></Field>
         <Field label="Montant (€)"><input type="number" value={amount} onChange={e=>setAmt(e.target.value)} placeholder="0" style={inp}/></Field>
         <Field label="Catégorie"><select value={cat} onChange={e=>setCat(e.target.value)} style={sel}>{EXPENSE_CATS.map(c=><option key={c}>{c}</option>)}</select></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Actif à partir de (optionnel)"><input type="month" value={startM} onChange={e=>setStartM(e.target.value)} style={inp}/></Field>
+          <Field label="Actif jusqu'à (optionnel)"><input type="month" value={endM} onChange={e=>setEndM(e.target.value)} style={inp}/></Field>
+        </div>
         <FA onClose={onClose} onSubmit={go} isEdit={!!initial?.id}/>
       </div>
     </Modal>
@@ -510,14 +518,15 @@ export default function Home() {
 
   // Perso computed
   const persoC=useMemo(()=>{
-    const totalRecurring=recurring.reduce((s,r)=>s+Number(r.amount),0);
+    const activeRecurring=recurring.filter(r=>isRecurringActive(r,mk));
+    const totalRecurring=activeRecurring.reduce((s,r)=>s+Number(r.amount),0);
     const totalOneTime=expenses.reduce((s,e)=>s+Number(e.amount),0);
     const totalSpent=totalRecurring+totalOneTime;
     const totalSavings=savings.reduce((s,e)=>s+Number(e.amount),0);
     const manualIncomes=incomes.filter((i:any)=>i.type!=="__salary_auto__");
     const salaireAuto=allExits.filter((e:any)=>e.month_key===mk&&e.category==="Salaire").reduce((s:number,e:any)=>s+Number(e.amount),0);
     const budget=manualIncomes.reduce((s:number,i:any)=>s+Number(i.amount),0)+salaireAuto;
-    return {totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent,salaireAuto,manualIncomes};
+    return {activeRecurring,totalRecurring,totalOneTime,totalSpent,totalSavings,budget,remaining:budget-totalSpent,salaireAuto,manualIncomes};
   },[recurring,expenses,incomes,savings,allExits,mk]);
 
   // Pro monthly computed
@@ -614,8 +623,8 @@ export default function Home() {
 
 
   // ─── Perso CRUD ───
-  const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category});loadData();setModal(null)};
-  const editRecurring = async(i: any)=>{await supabase.from("recurring_expenses").update({name:i.name,amount:i.amount,category:i.category}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
+  const addRecurring  = async(i: any)=>{await supabase.from("recurring_expenses").insert({user_id:userId,name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date});loadData();setModal(null)};
+  const editRecurring = async(i: any)=>{await supabase.from("recurring_expenses").update({name:i.name,amount:i.amount,category:i.category,start_date:i.start_date,end_date:i.end_date}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
   const delRecurring  = async(id: string)=>{await supabase.from("recurring_expenses").delete().eq("id",id);loadData()};
   const addExpense    = async(i: any)=>{await supabase.from("one_time_expenses").insert({user_id:userId,month_key:mk,name:i.name,amount:i.amount,category:i.category,date:i.date});loadData();setModal(null)};
   const editExpense   = async(i: any)=>{await supabase.from("one_time_expenses").update({name:i.name,amount:i.amount,category:i.category,date:i.date}).eq("id",i.id);loadData();setModal(null);setEditItem(null)};
@@ -895,7 +904,7 @@ export default function Home() {
             <div style={{...card,padding:"28px 26px"}}>
               <h3 style={{margin:"0 0 20px",fontSize:17,fontFamily:serif,fontWeight:400,color:text}}>Dépenses par catégorie</h3>
               {(()=>{
-                const all=[...recurring,...expenses];
+                const all=[...persoC.activeRecurring,...expenses];
                 const cats:{[k:string]:number}={};
                 all.forEach(e=>{cats[e.category]=(cats[e.category]||0)+Number(e.amount)});
                 const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
@@ -957,13 +966,19 @@ export default function Home() {
             <SectionHead title="Dépenses récurrentes" sub={`${fmt(persoC.totalRecurring)} / mois`} action={<button onClick={()=>setModal("addRecurring")} style={btnP}>+ Ajouter</button>}/>
             {recurring.length===0?<Empty label="Aucune dépense récurrente"/>:
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {recurring.map(r=>(
-                  <div key={r.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                {recurring.map(r=>{
+                  const active=isRecurringActive(r,mk);
+                  return (
+                  <div key={r.id} className="row" style={{...card,padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:active?1:0.45}}>
                     <div style={{display:"flex",alignItems:"center",gap:14}}>
                       <div style={{width:3,height:28,borderRadius:2,background:ocean,flexShrink:0}}/>
                       <div>
                         <div style={{fontSize:15,fontWeight:500,color:text}}>{r.name}</div>
-                        <div style={{fontSize:12,color:text3,marginTop:2}}>{r.category}</div>
+                        <div style={{fontSize:12,color:text3,marginTop:2}}>
+                          {r.category}
+                          {(r.start_date||r.end_date)&&` · ${r.start_date?fmtMonthYear(r.start_date):"toujours"} → ${r.end_date?fmtMonthYear(r.end_date):"toujours"}`}
+                          {!active&&" · hors période"}
+                        </div>
                       </div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -972,7 +987,8 @@ export default function Home() {
                       <button onClick={()=>delRecurring(r.id)} style={iconBtn(true)}>✕</button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             }
           </div>
